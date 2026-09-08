@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import {
   addSource, createMusic, exportCatalog, getMusic,
   listMusic, openDatabase, removeMusic, removeSource, reorderSources, setLyrics,
-  setPrimarySource, updateMusic, updateSource
+  setPrimarySource, updateMusic, updateSource, createLive, getLive, listLives, updateLive, removeLive, addLiveItem, updateLiveItem, removeLiveItem, reorderLiveItems, exportLegacyLive
 } from './src/db.mjs';
 import { confirmImport, inspectImport } from './src/importer.mjs';
 import { musicPatchSchema, musicSchema, sourceSchema, messageForValidation } from './src/contracts.js';
@@ -145,6 +145,16 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
     return { relatorio: confirmImport(database, body.payload, { partial: body.partial === true, storageRoot }) };
   });
   app.get('/api/exportacao', async () => exportCatalog(database));
+  app.get('/api/lives', async () => ({ lives: listLives(database) }));
+  app.post('/api/lives', async (request, reply) => { const id=createLive(database,request.body as any);reply.code(201);return {live:getLive(database,id)}; });
+  app.get('/api/lives/:id', async (request, reply) => { const live=getLive(database,(request.params as {id:string}).id);return live?{live}:reply.code(404).send({error:'Não encontrada'}); });
+  app.patch('/api/lives/:id', async (request, reply) => {const live=updateLive(database,(request.params as {id:string}).id,request.body as any);return live?{live}:reply.code(404).send({error:'Não encontrada'});});
+  app.delete('/api/lives/:id', async (request, reply) => removeLive(database,(request.params as {id:string}).id)?reply.code(204).send():reply.code(404).send({error:'Não encontrada'}));
+  app.post('/api/lives/:id/itens', async (request, reply) => {const body=request.body as any;if(!body.musicaId||!body.referenciaReproducao||!body.tipoReproducao)throw badRequest('campos de item obrigatórios');const id=(request.params as {id:string}).id,item=addLiveItem(database,id,body);reply.code(201);return {item:getLive(database,id)?.itens.find((x:any)=>x.id===item)};});
+  app.patch('/api/lives/:id/itens/:itemId', async (request, reply) => {const p=request.params as {id:string;itemId:string},item=updateLiveItem(database,p.id,p.itemId,request.body as any);return item?{item}:reply.code(404).send({error:'Não encontrada'});});
+  app.delete('/api/lives/:id/itens/:itemId', async (request, reply) => {const p=request.params as {id:string;itemId:string};return removeLiveItem(database,p.id,p.itemId)?reply.code(204).send():reply.code(404).send({error:'Não encontrada'});});
+  app.put('/api/lives/:id/itens/ordem', async (request) => {const ids=(request.body as {ids?:string[]}).ids;if(!Array.isArray(ids))throw badRequest('ids deve ser uma lista');return {itens:reorderLiveItems(database,(request.params as {id:string}).id,ids)};});
+  app.get('/api/lives/:id/exportacao', async (request,reply) => {const x=exportLegacyLive(database,(request.params as {id:string}).id);return x??reply.code(404).send({error:'Não encontrada'});});
   app.post('/api/uploads/:kind', async (request, reply) => {
     const kind = (request.params as { kind: string }).kind;
     const accepted = uploadExtensions[kind];
@@ -173,6 +183,7 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
     return reply.header('Cache-Control', 'no-store').type(staticTypes[extname(file).toLowerCase()] ?? 'application/octet-stream').send(body);
   });
   app.get('/catalogo', async (_request, reply) => sendStatic(reply, '/catalogo.html'));
+  app.get('/lives', async (_request, reply) => sendStatic(reply, '/lives.html'));
   app.get('/', async (_request, reply) => sendStatic(reply, '/'));
   app.get('/*', async (request, reply) => {
     const pathname = request.url.split('?')[0] ?? '/';
