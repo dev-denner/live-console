@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import multipart from '@fastify/multipart';
+import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFile, mkdir, writeFile, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -180,11 +181,20 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
   return app;
 }
 
+function openBrowser(url: string): void {
+  const command = process.platform === 'win32' ? 'cmd' : process.platform === 'darwin' ? 'open' : 'xdg-open';
+  const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url];
+  const child = spawn(command, args, { detached: true, stdio: 'ignore' });
+  child.on('error', () => undefined);
+  child.unref();
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const port = Number(process.env.PORT) || 8787;
   const app = createApp();
   void app.listen({ port, host: '127.0.0.1' }).then(() => {
     console.log(`Live Console: http://localhost:${port}`);
     console.log(`Catálogo: http://localhost:${port}/catalogo`);
+    if (process.env.NO_OPEN !== '1') openBrowser(`http://localhost:${port}`);
   });
 }
