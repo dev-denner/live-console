@@ -4,15 +4,36 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node server.mjs",
-    "dev": "node server.mjs",
-    "db:migrate": "node src/migrate.mjs",
-    "test": "node --test --test-concurrency=1",
-    "typecheck": "node --check server.mjs && node --check src/db.mjs && node --check src/importer.mjs",
-    "check": "node --check server.mjs",
-    "lint": "node --check server.mjs && node --check src/db.mjs && node --check src/importer.mjs"
+    "build": "tsc && cp -R migrations dist/migrations && cp index.html catalogo.html dist/",
+    "start": "npm run build && node dist/server.js",
+    "dev": "node --import tsx server.ts",
+    "db:migrate": "npm run build && node dist/src/migrate.mjs",
+    "test": "node --import tsx --test --test-concurrency=1 test/**/*.test.mjs test/**/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck",
+    "lint": "npm run typecheck"
   },
   "engines": {
     "node": ">=22.13.0"
+  },
+  "dependencies": {
+    "@fastify/multipart": "^10.1.1",
+    "fastify": "^5.12.3",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.0",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@fastify/multipart": "^10.1.1",
+    "fastify": "^5.12.3",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.0",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
   }
 }
