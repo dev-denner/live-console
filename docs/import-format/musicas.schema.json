@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["musicas"],"properties":{"musicas":{"type":"array","items":{"type":"object","required":["artista","titulo","fontes"],"properties":{"artista":{"type":"string"},"titulo":{"type":"string"},"fontes":{"type":"array"}}}}}}
