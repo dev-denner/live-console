@@ -1,0 +1,22 @@
+# Live Console
+
+Console legado em `/` e catálogo local em `/catalogo`. Requer Node.js **22.13.0 ou superior**, pois usa `node:sqlite`.
+
+```bash
+npm run db:migrate
+npm start
+npm run typecheck
+npm test
+```
+
+Abra `http://localhost:8787/` para o console legado e `http://localhost:8787/catalogo` para o catálogo. O banco é `data/live-console.sqlite` e é criado pelas migrations transacionais. Faça backup copiando esse arquivo com a aplicação parada e, ao mudar de computador, copie também `storage/`.
+
+O catálogo permite criar, editar, pesquisar, filtrar, importar/exportar JSON e manter referências de YouTube, áudio e vídeo. A identidade da importação é `artista + titulo + musicaBase` (com `musicaBase=titulo` quando ausente); uma referência é identificada por `tipo + referencia`. URLs e caminhos são tratados literalmente. A prévia não grava nada; a confirmação revalida, é atômica por padrão e aceita modo parcial explícito. `xEmLives` existente nunca é atualizado pela importação.
+
+Uploads aceitam áudio, vídeo e letras `.txt`/`.md`, com nomes aleatórios sob `storage/audio`, `storage/video` e `storage/letras`. O cliente nunca escolhe o caminho de destino. Banco, uploads, repertórios pessoais e mídias estão no `.gitignore`; desvincular um cadastro não remove o arquivo físico.
+
+O console legado continua carregando seus JSONs sem migração e preserva `youtube`, `arquivo`, `letra`, `observacao` e `interacoes` como estavam. Uma fixture fictícia em testes cobre esse formato.
+
+Formato: veja `docs/import-format/musicas.schema.json` e `musicas.example.json`. A exportação JSON pode ser reimportada em um banco vazio.
+
+Limitações: armazenamento é local e uploads são limitados a 5 MB. Próximas etapas: blocos reutilizáveis, relação muitos-para-muitos entre blocos e músicas, ordem de músicas dentro de blocos e seleção de um bloco inteiro para o repertório; isso ainda não é implementado.

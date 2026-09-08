@@ -1,79 +1,31 @@
 import http from 'node:http';
 import { spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile, unlink } from 'node:fs/promises';
 import { basename, dirname, extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
+import { openDatabase, listMusic, getMusic, createMusic, updateMusic, removeMusic, addSource, updateSource, removeSource, reorderSources, setPrimarySource, setLyrics, exportCatalog } from './src/db.mjs';
+import { inspectImport, confirmImport } from './src/importer.mjs';
 
-const appRoot = fileURLToPath(new URL('.', import.meta.url));
-const livesRoot = basename(appRoot.replace(/[\\/]$/, '')).toLowerCase() === 'live-console'
-  ? dirname(appRoot.replace(/[\\/]$/, ''))
-  : appRoot;
-const port = Number(process.env.PORT) || 8787;
-const types = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.md': 'text/markdown; charset=utf-8',
-  '.txt': 'text/plain; charset=utf-8',
-  '.mp3': 'audio/mpeg',
-  '.wav': 'audio/wav',
-  '.m4a': 'audio/mp4'
-};
-
-function isInside(parent, child) {
-  const relative = child.slice(resolve(parent).length);
-  return child === resolve(parent) || (relative.startsWith(sep) && !relative.includes(`..${sep}`));
-}
-
-function localAsset(reference = '') {
-  const portable = reference.replace(/\\/g, '/');
-  const marker = '/lives/';
-  const markerIndex = portable.toLowerCase().lastIndexOf(marker);
-  const relative = markerIndex >= 0 ? portable.slice(markerIndex + marker.length) : portable.replace(/^\.?\/+/, '');
-  const candidate = resolve(livesRoot, relative.split('/').join(sep));
-  const allowed = ['musicas', 'letras', 'repertorios'].some(folder => isInside(join(livesRoot, folder), candidate));
-  if (!allowed) throw new Error('Arquivo fora das pastas permitidas');
-  return candidate;
-}
-
-function openBrowser(url) {
-  const command = process.platform === 'win32' ? 'cmd' : process.platform === 'darwin' ? 'open' : 'xdg-open';
-  const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url];
-  const child = spawn(command, args, { detached: true, stdio: 'ignore' });
-  child.on('error', () => {});
-  child.unref();
-}
-
-const server = http.createServer(async (request, response) => {
-  try {
-    const url = new URL(request.url, `http://localhost:${port}`);
-    const pathname = decodeURIComponent(url.pathname);
-    if (pathname === '/local') {
-      const file = localAsset(url.searchParams.get('path') || '');
-      const body = await readFile(file);
-      response.writeHead(200, {
-        'Content-Type': types[extname(file).toLowerCase()] || 'application/octet-stream',
-        'Cache-Control': 'no-store'
-      });
-      response.end(body);
-      return;
-    }
-    const relative = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
-    const file = normalize(join(appRoot, relative));
-    if (!isInside(appRoot, resolve(file))) throw new Error('Caminho inválido');
-    const body = await readFile(file);
-    response.writeHead(200, { 'Content-Type': types[extname(file)] || 'application/octet-stream' });
-    response.end(body);
-  } catch {
-    response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-    response.end('Arquivo não encontrado.');
-  }
-});
-
-server.listen(port, '127.0.0.1', () => {
-  const url = `http://localhost:${port}`;
-  console.log(`Live Console aberto em ${url}`);
-  console.log(`Pasta de lives: ${livesRoot}`);
-  console.log('Mantenha esta janela aberta durante a live. Pressione Ctrl+C para encerrar.');
-  if (process.env.NO_OPEN !== '1') openBrowser(url);
-});
+const appRoot=fileURLToPath(new URL('.',import.meta.url)), livesRoot=basename(appRoot.replace(/[\\/]$/, '')).toLowerCase()==='live-console'?dirname(appRoot.replace(/[\\/]$/, '')):appRoot, port=Number(process.env.PORT)||8787;
+const dbFile=process.env.LIVE_CONSOLE_DB||join(appRoot,'data','live-console.sqlite');
+const storage=resolve(process.env.LIVE_CONSOLE_STORAGE||join(appRoot,'storage'));
+const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.css':'text/css; charset=utf-8','.txt':'text/plain; charset=utf-8','.md':'text/markdown; charset=utf-8'};
+const uploadTypes={audio:new Set(['.mp3','.wav','.m4a','.aac','.flac','.ogg']),video:new Set(['.mp4','.mov','.mkv','.webm']),letras:new Set(['.txt','.md'])}; const limit=5*1024*1024;
+function inside(parent,child){const rel=resolve(child).slice(resolve(parent).length);return resolve(child)===resolve(parent)||(rel.startsWith(sep)&&!rel.includes(`..${sep}`));}
+function json(res,status,body){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(body));}
+async function body(req){let chunks=[],size=0;for await(const chunk of req){size+=chunk.length;if(size>limit)throw Object.assign(new Error('Corpo excede 5 MB'),{status:413});chunks.push(chunk);}const raw=Buffer.concat(chunks);try{return JSON.parse(raw||'{}');}catch{throw Object.assign(new Error('JSON inválido'),{status:400});}}
+function route(path){return path.split('/').filter(Boolean).map(decodeURIComponent);}
+async function staticFile(path,res){const file=resolve(appRoot,path==='/'?'index.html':path.slice(1));if(!inside(appRoot,file))throw Object.assign(new Error('Caminho inválido'),{status:400});const content=await readFile(file);res.writeHead(200,{'Content-Type':types[extname(file)]||'application/octet-stream'});res.end(content);}
+function localAsset(reference=''){const portable=reference.replace(/\\/g,'/'),marker='/lives/',index=portable.toLowerCase().lastIndexOf(marker),relative=index>=0?portable.slice(index+marker.length):portable.replace(/^\.?\/+/,''),file=resolve(livesRoot,relative.split('/').join(sep));if(!['musicas','letras','repertorios'].some(folder=>inside(join(livesRoot,folder),file)))throw Object.assign(new Error('Arquivo fora das pastas permitidas'),{status:400});return file;}
+function parseUpload(raw,contentType){const match=/boundary=([^;]+)/.exec(contentType||'');if(!match)throw Object.assign(new Error('multipart/form-data obrigatório'),{status:400});const boundary=Buffer.from(`--${match[1]}`), start=raw.indexOf(boundary);const next=raw.indexOf(boundary,start+boundary.length);const part=raw.subarray(start+boundary.length+2,next-2);const split=part.indexOf(Buffer.from('\r\n\r\n'));const head=part.subarray(0,split).toString();const name=/filename="([^"]+)"/.exec(head)?.[1];if(!name)throw Object.assign(new Error('Arquivo ausente'),{status:400});return {name:basename(name),data:part.subarray(split+4)};}
+async function upload(req,kind){let chunks=[],size=0;for await(const chunk of req){size+=chunk.length;if(size>limit)throw Object.assign(new Error('Upload excede 5 MB'),{status:413});chunks.push(chunk);}const file=parseUpload(Buffer.concat(chunks),req.headers['content-type']);const ext=extname(file.name).toLowerCase();if(!uploadTypes[kind]?.has(ext))throw Object.assign(new Error('Extensão não permitida'),{status:400});const folder=join(storage,kind);await mkdir(folder,{recursive:true});const saved=`${randomUUID()}${ext}`, target=join(folder,saved);try{await writeFile(target,file.data,{flag:'wx'});}catch(error){if(error.code!=='EEXIST')await unlink(target).catch(()=>{});throw error;}return `storage/${kind}/${saved}`;}
+export function createApp({database=openDatabase(dbFile),storageRoot=storage}={}) { return http.createServer(async(req,res)=>{try{const url=new URL(req.url,`http://localhost:${port}`), parts=route(url.pathname); if(url.pathname==='/local'){const file=localAsset(url.searchParams.get('path')||'');const content=await readFile(file);res.writeHead(200,{'Content-Type':types[extname(file).toLowerCase()]||'application/octet-stream','Cache-Control':'no-store'});return res.end(content);} if(url.pathname==='/api/health'&&req.method==='GET')return json(res,200,{ok:true});
+  if(parts[0]==='api'){ if(parts[1]==='musicas'&&parts.length===2&&req.method==='GET')return json(res,200,{musicas:listMusic(database,Object.fromEntries(url.searchParams))}); if(parts[1]==='musicas'&&parts.length===2&&req.method==='POST'){const id=createMusic(database,await body(req));return json(res,201,{musica:getMusic(database,id)});} const id=parts[2]; if(parts[1]==='musicas'&&parts.length===3&&req.method==='GET'){const item=getMusic(database,id);return item?json(res,200,{musica:item}):json(res,404,{error:'Não encontrada'});} if(parts[1]==='musicas'&&parts.length===3&&req.method==='PATCH'){const item=updateMusic(database,id,await body(req));return item?json(res,200,{musica:item}):json(res,404,{error:'Não encontrada'});} if(parts[1]==='musicas'&&parts.length===3&&req.method==='DELETE')return json(res,removeMusic(database,id)?204:404,{});
+    if(parts[1]==='musicas'&&parts[3]==='fontes'&&parts.length===4&&req.method==='POST'){const source=addSource(database,id,await body(req));return json(res,201,{fonte:getMusic(database,id).fontes.find(x=>x.id===source)});} if(parts[1]==='musicas'&&parts[3]==='fontes'&&parts.length===5){const sourceId=parts[4];if(req.method==='PATCH'){const item=updateSource(database,id,sourceId,await body(req));return item?json(res,200,{fonte:item}):json(res,404,{error:'Não encontrada'});}if(req.method==='DELETE')return json(res,removeSource(database,id,sourceId)?204:404,{});}
+    if(parts[1]==='musicas'&&parts[3]==='fontes'&&parts[4]==='ordem'&&req.method==='PUT')return json(res,200,{fontes:reorderSources(database,id,(await body(req)).ids)}); if(parts[1]==='musicas'&&parts[3]==='fontes'&&parts[4]==='principal'&&req.method==='PUT')return json(res,setPrimarySource(database,id,(await body(req)).id)?200:404,{musica:getMusic(database,id)}); if(parts[1]==='musicas'&&parts[3]==='letra'){if(req.method==='PUT')return json(res,200,{musica:setLyrics(database,id,(await body(req)).referencia)});if(req.method==='DELETE')return json(res,200,{musica:setLyrics(database,id,null)});}
+    if(parts[1]==='importacao'&&parts[2]==='previa'&&req.method==='POST')return json(res,200,{relatorio:inspectImport(database,await body(req),{storageRoot})}); if(parts[1]==='importacao'&&parts[2]==='confirmar'&&req.method==='POST'){const data=await body(req);return json(res,200,{relatorio:confirmImport(database,data.payload,{partial:Boolean(data.partial),storageRoot})});} if(parts[1]==='exportacao'&&req.method==='GET')return json(res,200,exportCatalog(database)); if(parts[1]==='uploads'&&parts[2]&&req.method==='POST')return json(res,201,{referencia:await upload(req,parts[2])}); return json(res,404,{error:'Rota não encontrada'}); }
+  if(url.pathname==='/catalogo')return staticFile('/catalogo.html',res); return staticFile(url.pathname,res);
+ }catch(error){json(res,error.status||500,{error:error.message||'Erro interno'});}}); }
+function openBrowser(url){const command=process.platform==='win32'?'cmd':process.platform==='darwin'?'open':'xdg-open';const args=process.platform==='win32'?['/c','start','',url]:[url];const child=spawn(command,args,{detached:true,stdio:'ignore'});child.on('error',()=>{});child.unref();}
+if(import.meta.url===`file://${process.argv[1]}`){const server=createApp();server.listen(port,'127.0.0.1',()=>{console.log(`Live Console: http://localhost:${port}`);console.log(`Catálogo: http://localhost:${port}/catalogo`);if(process.env.NO_OPEN!=='1')openBrowser(`http://localhost:${port}`);});}
