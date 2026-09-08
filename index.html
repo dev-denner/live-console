@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Console</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080a0f;
+      --panel: #111621;
+      --panel-2: #171e2b;
+      --line: #293246;
+      --text: #f6f7fb;
+      --muted: #9ca9bc;
+      --accent: #ffb84d;
+      --green: #7fe0c4;
+      --blue: #79b8ff;
+      --red: #ff7d8f;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(255,184,77,.11), transparent 32rem),
+        radial-gradient(circle at 90% 10%, rgba(127,224,196,.08), transparent 28rem),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .shell { width: min(1600px, calc(100% - 24px)); margin: 0 auto; padding: 18px 0 26px; }
+    .topbar {
+      display: flex; align-items: center; gap: 16px; justify-content: space-between;
+      padding: 14px 16px; border: 1px solid var(--line); border-radius: 16px;
+      background: rgba(17,22,33,.9); backdrop-filter: blur(12px);
+      position: sticky; top: 8px; z-index: 20;
+    }
+    .brand { min-width: 0; }
+    .eyebrow { color: var(--accent); font-size: .72rem; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 2px 0 0; font-size: 1.35rem; }
+    .live-title { color: var(--muted); font-size: .86rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .btn, .file-label {
+      min-height: 40px; padding: 8px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); color: var(--text);
+      font-weight: 750; text-decoration: none;
+    }
+    .btn:hover, .file-label:hover { border-color: var(--accent); }
+    .btn.primary, .file-label.primary { border-color: var(--accent); background: var(--accent); color: #251700; }
+    input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+    .status {
+      display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+      margin: 12px 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: rgba(17,22,33,.72);
+    }
+    .counter { font-weight: 800; font-variant-numeric: tabular-nums; }
+    .progress { height: 8px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
+    .progress > span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--green)); transition: width .2s; }
+    .total { color: var(--muted); font-size: .88rem; }
+
+    .workspace { display: grid; grid-template-columns: minmax(240px, .8fr) minmax(380px, 1.3fr) minmax(300px, 1fr); gap: 12px; min-height: calc(100vh - 150px); }
+    .panel { min-width: 0; border: 1px solid var(--line); border-radius: 16px; background: rgba(17,22,33,.86); overflow: hidden; }
+    .panel-head { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .panel-head h2 { margin: 0; font-size: .9rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+
+    .setlist { max-height: calc(100vh - 210px); overflow: auto; padding: 8px; }
+    .song-row {
+      width: 100%; display: grid; grid-template-columns: 32px 1fr auto; gap: 9px; align-items: center;
+      border: 1px solid transparent; border-radius: 11px; padding: 10px; background: transparent; color: inherit; text-align: left;
+    }
+    .song-row:hover { background: var(--panel-2); }
+    .song-row.current { border-color: var(--accent); background: rgba(255,184,77,.1); }
+    .song-row.next { border-color: rgba(127,224,196,.28); }
+    .song-row.done { opacity: .5; }
+    .number { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+    .song-name { display: block; font-weight: 800; line-height: 1.2; }
+    .artist { display: block; color: var(--muted); font-size: .82rem; margin-top: 3px; }
+    .duration { color: var(--muted); font-size: .8rem; }
+
+    .stage { padding: 16px; }
+    .now-label { color: var(--accent); font-size: .74rem; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+    .current-title { margin: 4px 0 2px; font-size: clamp(1.6rem, 3vw, 2.5rem); line-height: 1.05; }
+    .current-artist { color: var(--muted); }
+    .next-up { margin: 10px 0 16px; color: var(--green); font-size: .88rem; }
+    .player { margin-top: 14px; border: 1px solid var(--line); border-radius: 13px; overflow: hidden; background: #05070a; }
+    .player iframe { width: 100%; aspect-ratio: 16 / 9; border: 0; display: block; }
+    .player audio { width: 100%; display: block; }
+    .empty-player { padding: 38px 18px; color: var(--muted); text-align: center; }
+    .player-help { padding: 10px 12px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); }
+    .player-actions { display: flex; justify-content: center; gap: 8px; padding: 14px; }
+    .stage .lyrics-wrap { margin-top: 14px; border: 1px solid var(--line); border-radius: 13px; overflow: hidden; background: rgba(5,7,10,.45); }
+    .stage .lyrics { min-height: 220px; max-height: calc(100vh - 570px); }
+    .folder-status { color: var(--green); font-size: .78rem; align-self: center; }
+    .nav { display: grid; grid-template-columns: 1fr 1.3fr 1fr; gap: 8px; margin-top: 14px; }
+    .nav .btn { width: 100%; }
+    .nav .go { background: var(--green); border-color: var(--green); color: #05251c; }
+
+    .right { min-height: 0; }
+    .lyrics { padding: 18px; overflow: auto; max-height: calc(100vh - 390px); white-space: pre-wrap; line-height: 1.7; font-size: 1.08rem; }
+    .lyrics strong { color: var(--accent); }
+    .lyrics h1, .lyrics h2, .lyrics h3 { margin: .7em 0 .35em; }
+    .copilot { border-bottom: 1px solid var(--line); padding: 14px; background: rgba(121,184,255,.035); }
+    .copilot h3 { margin: 0 0 8px; color: var(--blue); font-size: .82rem; text-transform: uppercase; letter-spacing: .06em; }
+    .copilot ul { margin: 0; padding-left: 20px; }
+    .copilot li + li { margin-top: 7px; }
+    .speak { margin-bottom: 14px; padding: 14px; border: 2px solid rgba(127,224,196,.75); border-radius: 13px; background: rgba(127,224,196,.09); }
+    .speak-title { color: var(--green); font-size: .82rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+    .speak-line { margin: 9px 0 0; font-size: 1.05rem; line-height: 1.42; font-weight: 750; }
+    .speak-line + .speak-line { padding-top: 9px; border-top: 1px solid rgba(127,224,196,.18); }
+    .cue { margin: 0 0 10px; padding: 9px 11px; border-left: 3px solid var(--blue); background: rgba(121,184,255,.07); border-radius: 0 8px 8px 0; color: var(--muted); }
+    .muted { color: var(--muted); }
+
+    .welcome { grid-column: 1 / -1; display: grid; place-items: center; padding: 60px 20px; text-align: center; }
+    .welcome-box { width: min(660px, 100%); padding: 34px; border: 1px solid var(--line); border-radius: 20px; background: rgba(17,22,33,.88); }
+    .welcome-box h2 { margin: 0 0 8px; font-size: 1.8rem; }
+    .welcome-box p { color: var(--muted); }
+    .error { margin-top: 10px; color: #ffd0d7; }
+    [hidden] { display: none !important; }
+
+    @media (max-width: 980px) {
+      .workspace { grid-template-columns: 280px 1fr; }
+      .right { grid-column: 1 / -1; }
+      .lyrics { max-height: 420px; }
+      .copilot { border-top: 0; border-left: 1px solid var(--line); }
+    }
+    @media (max-width: 700px) {
+      .shell { width: min(100% - 12px, 1600px); padding-top: 6px; }
+      .topbar { position: static; align-items: flex-start; }
+      .workspace { grid-template-columns: 1fr; min-height: auto; }
+      .setlist { max-height: 330px; }
+      .right { grid-column: auto; }
+      .copilot { border-left: 0; border-top: 1px solid var(--line); }
+      .status { grid-template-columns: auto 1fr; }
+      .total { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="eyebrow">Live Console · MVP</div>
+        <h1 id="title">Console da Live</h1>
+        <div class="live-title" id="subtitle">Carregue o JSON para começar</div>
+      </div>
+      <div class="actions">
+        <label class="file-label primary" for="live-file">📄 Abrir live</label>
+        <input id="live-file" type="file" accept="application/json,.json">
+        <label class="file-label" for="assets-folder">📁 Adicionar pasta</label>
+        <input id="assets-folder" type="file" webkitdirectory multiple>
+        <span class="folder-status" id="folder-status"></span>
+        <button class="btn primary" id="start-live" type="button" disabled>● Iniciar live</button>
+        <button class="btn" id="finish-live" type="button" disabled>■ Terminar live</button>
+        <button class="btn" id="export-execution" type="button" disabled>↓ Registro</button>
+      </div>
+    </header>
+
+    <section class="status" id="status" hidden>
+      <span class="counter" id="counter">1 / 1</span>
+      <div class="progress"><span id="progress-bar"></span></div>
+      <span class="total" id="total-time"></span>
+    </section>
+
+    <section class="workspace" id="workspace">
+      <div class="welcome" id="welcome">
+        <div class="welcome-box">
+          <div class="eyebrow">V0.0001 😄</div>
+          <h2>Uma tela. A live inteira.</h2>
+          <p>Abra o JSON da live. Se ele usar MP3 e letras em arquivos separados, escolha também a pasta que contém esses arquivos.</p>
+          <label class="file-label primary" for="live-file">📄 Escolher JSON da live</label>
+          <div class="error" id="error" role="alert"></div>
+        </div>
+      </div>
+
+      <aside class="panel" id="setlist-panel" hidden>
+        <div class="panel-head"><h2>Repertório</h2><span class="muted" id="song-count"></span></div>
+        <div class="setlist" id="setlist"></div>
+      </aside>
+
+      <section class="panel" id="stage-panel" hidden>
+        <div class="stage">
+          <div class="now-label">Agora</div>
+          <h2 class="current-title" id="current-title"></h2>
+          <div class="current-artist" id="current-artist"></div>
+          <div class="next-up" id="next-up"></div>
+          <div class="player" id="player"></div>
+          <div class="lyrics-wrap">
+            <div class="panel-head"><h2>Letra</h2><span class="muted" id="lyrics-source"></span></div>
+            <div class="lyrics" id="lyrics"></div>
+          </div>
+          <div class="nav">
+            <button class="btn" id="prev" type="button">← Anterior</button>
+            <button class="btn go" id="done" type="button">✓ Feita + próxima</button>
+            <button class="btn" id="next" type="button">Próxima →</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel right" id="right-panel" hidden>
+        <div class="copilot">
+          <div class="speak">
+            <div class="speak-title">🎙️ FALE</div>
+            <div id="speak-lines"></div>
+          </div>
+          <h3>👀 Pra eu lembrar</h3>
+          <p class="cue" id="cue" hidden></p>
+          <ul id="interactions"></ul>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const els = {
+      liveFile: document.getElementById('live-file'),
+      assetsFolder: document.getElementById('assets-folder'),
+      title: document.getElementById('title'),
+      subtitle: document.getElementById('subtitle'),
+      status: document.getElementById('status'),
+      counter: document.getElementById('counter'),
+      progressBar: document.getElementById('progress-bar'),
+      totalTime: document.getElementById('total-time'),
+      welcome: document.getElementById('welcome'),
+      error: document.getElementById('error'),
+      setlistPanel: document.getElementById('setlist-panel'),
+      setlist: document.getElementById('setlist'),
+      songCount: document.getElementById('song-count'),
+      stagePanel: document.getElementById('stage-panel'),
+      currentTitle: document.getElementById('current-title'),
+      currentArtist: document.getElementById('current-artist'),
+      nextUp: document.getElementById('next-up'),
+      player: document.getElementById('player'),
+      prev: document.getElementById('prev'),
+      done: document.getElementById('done'),
+      next: document.getElementById('next'),
+      startLive: document.getElementById('start-live'),
+      finishLive: document.getElementById('finish-live'),
+      exportExecution: document.getElementById('export-execution'),
+      rightPanel: document.getElementById('right-panel'),
+      lyrics: document.getElementById('lyrics'),
+      lyricsSource: document.getElementById('lyrics-source'),
+      cue: document.getElementById('cue'),
+      interactions: document.getElementById('interactions')
+      ,speakLines: document.getElementById('speak-lines')
+      ,folderStatus: document.getElementById('folder-status')
+    };
+
+    const state = { live: null, current: 0, completed: new Set(), assets: new Map(), folders: new Set(), objectUrls: [], startedAt: null, endedAt: null };
+
+    function esc(value = '') {
+      return String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+    }
+
+    function markdown(text = '') {
+      let html = esc(text);
+      html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>').replace(/^## (.+)$/gm, '<h2>$1</h2>').replace(/^# (.+)$/gm, '<h1>$1</h1>');
+      html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(.+?)\*/g, '<em>$1</em>');
+      return html;
+    }
+
+    function basename(path = '') { return path.replace(/\\/g, '/').split('/').pop(); }
+    function formatSeconds(seconds) {
+      if (!Number.isFinite(seconds)) return '';
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      return h ? `${h}h${String(m).padStart(2,'0')}min` : `${m}:${String(s).padStart(2,'0')}`;
+    }
+
+    function executionKey() {
+      if (!state.live) return '';
+      const id = state.live.data || state.live.titulo || 'sem-data';
+      return `denner-live-execucao-${id}`;
+    }
+    function saveExecutionState() {
+      if (!state.live) return;
+      localStorage.setItem(executionKey(), JSON.stringify({
+        current: state.current,
+        completed: [...state.completed],
+        startedAt: state.startedAt,
+        endedAt: state.endedAt
+      }));
+    }
+    function restoreExecutionState() {
+      const raw = localStorage.getItem(executionKey());
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw);
+        state.current = Number.isInteger(saved.current) ? Math.max(0, Math.min(saved.current, state.live.musicas.length - 1)) : 0;
+        state.completed = new Set((saved.completed || []).filter(index => Number.isInteger(index) && index >= 0 && index < state.live.musicas.length));
+        state.startedAt = saved.startedAt || null;
+        state.endedAt = saved.endedAt || null;
+      } catch { localStorage.removeItem(executionKey()); }
+    }
+    function executionRecord() {
+      const performed = [...state.completed].sort((a, b) => a - b);
+      const toSong = index => {
+        const song = state.live.musicas[index];
+        return {
+          posicao: index + 1,
+          titulo: song.titulo,
+          artista: song.artista || '',
+          versao: song.versao || song['versão'] || null,
+          fonte: song.fonte || (song.youtube ? 'youtube' : 'local'),
+          referencia: song.youtube || song.arquivo || song.audio || song.url || null
+        };
+      };
+      return {
+        tipo: 'registro-execucao-live',
+        registroId: `${state.live.data || 'sem-data'}:${state.startedAt || 'sem-inicio'}`,
+        live: { titulo: state.live.titulo || '', data: state.live.data || '', horario: state.live.horario || '' },
+        iniciadaEm: state.startedAt,
+        terminadaEm: state.endedAt,
+        musicasTocadas: performed.map(toSong),
+        musicasNaoTocadas: state.live.musicas.map((_, index) => index).filter(index => !state.completed.has(index)).map(toSong)
+      };
+    }
+    function downloadExecution() {
+      if (!state.live) return;
+      const blob = new Blob([JSON.stringify(executionRecord(), null, 2) + '\n'], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `live-${state.live.data || 'sem-data'}-execucao.json`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
+    function syncExecutionControls() {
+      const loaded = Boolean(state.live);
+      const active = loaded && Boolean(state.startedAt) && !state.endedAt;
+      els.startLive.disabled = !loaded || active;
+      els.finishLive.disabled = !active;
+      els.exportExecution.disabled = !loaded || !state.startedAt;
+      els.startLive.textContent = state.endedAt ? '↺ Reabrir live' : (state.startedAt ? '● Live em andamento' : '● Iniciar live');
+      els.done.disabled = !active;
+      els.done.textContent = state.completed.has(state.current) ? '↶ Desfazer feita' : '✓ Feita + próxima';
+    }
+
+    function validateLive(data) {
+      if (!data || typeof data !== 'object') throw new Error('O JSON precisa conter um objeto.');
+      if (!Array.isArray(data.musicas) || data.musicas.length === 0) throw new Error('O JSON precisa ter uma lista "musicas" com pelo menos uma música.');
+      data.musicas.forEach((song, i) => {
+        if (!song.titulo) throw new Error(`A música ${i + 1} está sem "titulo".`);
+        if (song.fonte && !['local','youtube'].includes(song.fonte)) throw new Error(`Fonte inválida na música ${i + 1}: use "local" ou "youtube".`);
+      });
+      return data;
+    }
+
+    function youtubeId(url = '') {
+      try {
+        const parsed = new URL(url);
+        if (parsed.hostname.includes('youtu.be')) return parsed.pathname.slice(1).split('/')[0];
+        if (parsed.pathname.startsWith('/shorts/')) return parsed.pathname.split('/')[2];
+        if (parsed.pathname.startsWith('/embed/')) return parsed.pathname.split('/')[2];
+        return parsed.searchParams.get('v');
+      } catch { return ''; }
+    }
+
+    function youtubeStart(url = '') {
+      try {
+        const parsed = new URL(url);
+        const raw = parsed.searchParams.get('t') || parsed.searchParams.get('start') || '';
+        if (/^\d+$/.test(raw)) return Number(raw);
+        const parts = raw.match(/(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/i);
+        if (!parts || !raw) return 0;
+        return (Number(parts[1]) || 0) * 3600 + (Number(parts[2]) || 0) * 60 + (Number(parts[3]) || 0);
+      } catch { return 0; }
+    }
+
+    const motivationalLines = [
+      'Se o dia foi pesado, fica por aqui. Vamos deixar a noite um pouquinho mais leve juntos.',
+      'Às vezes tudo que a gente precisa é de uma música boa e alguns minutos para respirar.',
+      'Se ninguém te falou isso hoje: vai com calma. Você não precisa resolver a vida inteira de uma vez.',
+      'Que essa música seja uma pausa boa no seu dia. Você merece um pouco de leveza também.',
+      'Se você chegou agora, seja muito bem-vindo. Aqui a ideia é cantar, conversar e sair um pouco melhor do que entrou.',
+      'Tem dia que a vitória é simplesmente continuar. Então fica comigo e vamos de música.',
+      'Tomara que alguma música de hoje encontre exatamente a lembrança boa que você estava precisando.',
+      'Respira, deixa o resto lá fora por alguns minutos e vem cantar comigo.'
+    ];
+
+    function splitInteraction(item = '') {
+      const text = String(item).trim();
+      const quoted = text.match(/[\"'“‘]([^\"'”’]+)[\"'”’]/);
+      if (quoted && /^(diga|pergunte|brinque|convide|peça|fale)\b/i.test(text)) {
+        return { speak: quoted[1], remember: '' };
+      }
+      if (/^(diga|pergunte|brinque|convide|peça|fale)\s*:/i.test(text)) {
+        return { speak: text.replace(/^[^:]+:\s*/i, ''), remember: '' };
+      }
+      return { speak: '', remember: text };
+    }
+
+    function assetKey(path = '') {
+      return path.replace(/\\/g, '/').replace(/^\.\//, '').toLocaleLowerCase('pt-BR');
+    }
+    function assetFor(path) { return state.assets.get(assetKey(path)) || state.assets.get(assetKey(basename(path))); }
+    function serverAsset(path) { return `/local?path=${encodeURIComponent(path)}`; }
+    function releaseObjectUrls() { state.objectUrls.forEach(URL.revokeObjectURL); state.objectUrls = []; }
+    function fileUrl(file) { const url = URL.createObjectURL(file); state.objectUrls.push(url); return url; }
+
+    async function readLyrics(song) {
+      if (song.letraTexto) return { text: song.letraTexto, source: 'no JSON' };
+      if (!song.letra) return { text: 'Letra não informada para esta música.', source: '' };
+      const file = assetFor(song.letra);
+      if (file) return { text: await file.text(), source: basename(song.letra) };
+      if (window.location.protocol.startsWith('http')) {
+        const response = await fetch(serverAsset(song.letra));
+        if (response.ok) return { text: await response.text(), source: basename(song.letra) };
+      }
+      return { text: `Arquivo de letra não encontrado: ${song.letra}\n\nEscolha a pasta de arquivos no topo.`, source: 'arquivo pendente' };
+    }
+
+    function renderPlayer(song) {
+      releaseObjectUrls();
+      if (song.fonte === 'youtube' || song.youtube) {
+        const id = youtubeId(song.youtube || song.url);
+        const videoUrl = song.youtube || song.url;
+        const start = youtubeStart(videoUrl);
+        if (!id) {
+          els.player.innerHTML = '<div class="empty-player">Link do YouTube inválido.</div>';
+        } else if (window.location.protocol === 'file:') {
+          els.player.innerHTML = `<div class="empty-player"><strong>O YouTube bloqueia o player quando o console é aberto diretamente do disco.</strong><br>Abra pelo iniciador do Live Console para assistir aqui, ou use o botão abaixo agora.</div><div class="player-actions"><a class="btn primary" href="${esc(videoUrl)}" target="_blank" rel="noopener">▶ Abrir no YouTube</a></div>`;
+        } else {
+          els.player.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${esc(id)}?rel=0${start ? `&start=${start}` : ''}" title="YouTube player" referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+        }
+        return;
+      }
+
+      const reference = song.arquivo || song.audio;
+      const file = reference ? assetFor(reference) : null;
+      if (file) {
+        els.player.innerHTML = `<audio controls src="${fileUrl(file)}"></audio><div class="player-help">${esc(basename(reference))}</div>`;
+      } else if (reference && window.location.protocol.startsWith('http')) {
+        els.player.innerHTML = `<audio controls src="${serverAsset(reference)}"></audio><div class="player-help">${esc(basename(reference))}</div>`;
+      } else {
+        els.player.innerHTML = `<div class="empty-player">🎵 ${reference ? `Playback não encontrado: <strong>${esc(basename(reference))}</strong>` : 'Playback não informado.'}</div><div class="player-help">Para áudio local, escolha a pasta de arquivos no topo. O Live Console não copia nem envia seus arquivos.</div>`;
+      }
+    }
+
+    function renderSetlist() {
+      els.setlist.innerHTML = state.live.musicas.map((song, index) => {
+        const classes = ['song-row', index === state.current ? 'current' : '', index === state.current + 1 ? 'next' : '', state.completed.has(index) ? 'done' : ''].filter(Boolean).join(' ');
+        return `<button class="${classes}" type="button" data-index="${index}"><span class="number">${String(index + 1).padStart(2,'0')}</span><span><span class="song-name">${esc(song.titulo)}</span><span class="artist">${esc(song.artista || '')}</span></span><span class="duration">${formatSeconds(song.duracao)}</span></button>`;
+      }).join('');
+      els.setlist.querySelectorAll('[data-index]').forEach(btn => btn.addEventListener('click', () => selectSong(Number(btn.dataset.index))));
+      els.setlist.querySelector('.current')?.scrollIntoView({ block: 'nearest' });
+    }
+
+    async function selectSong(index) {
+      if (!state.live) return;
+      state.current = Math.max(0, Math.min(index, state.live.musicas.length - 1));
+      const song = state.live.musicas[state.current];
+      const next = state.live.musicas[state.current + 1];
+      els.currentTitle.textContent = song.titulo;
+      els.currentArtist.textContent = song.artista || '';
+      els.nextUp.textContent = next ? `Próxima: ${next.titulo} — ${next.artista || ''}` : 'Última música do repertório';
+      els.cue.textContent = song.observacao || song.fala || '';
+      els.cue.hidden = !els.cue.textContent;
+      const interactions = song.interacoes || song.interacao || [];
+      const items = Array.isArray(interactions) ? interactions : [interactions];
+      const split = items.filter(Boolean).map(splitInteraction);
+      const remember = split.map(item => item.remember).filter(Boolean);
+      const speak = split.map(item => item.speak).filter(Boolean);
+      els.interactions.innerHTML = (remember.length ? remember : ['Olhe o chat e cumprimente pelo nome quem acabou de chegar.']).map(item => `<li>${esc(item)}</li>`).join('');
+      const motivational = motivationalLines[state.current % motivationalLines.length];
+      els.speakLines.innerHTML = [...speak, motivational].slice(0, 3).map(item => `<p class="speak-line">${esc(item)}</p>`).join('');
+      try {
+        const lyric = await readLyrics(song);
+        els.lyrics.innerHTML = markdown(lyric.text);
+        els.lyricsSource.textContent = lyric.source;
+      } catch {
+        els.lyrics.textContent = `Não consegui abrir a letra: ${song.letra || 'referência não informada'}`;
+        els.lyricsSource.textContent = 'arquivo pendente';
+      }
+      renderPlayer(song);
+      renderSetlist();
+      renderStatus();
+      syncExecutionControls();
+    }
+
+    function renderStatus() {
+      const total = state.live.musicas.length;
+      els.counter.textContent = `${state.current + 1} / ${total}`;
+      els.progressBar.style.width = `${((state.current + 1) / total) * 100}%`;
+      const seconds = state.live.musicas.reduce((sum, song) => sum + (Number(song.duracao) || 0), 0);
+      const mode = state.endedAt ? 'Live encerrada' : (state.startedAt ? 'Live em andamento' : 'Prévia — clique em Iniciar live para registrar');
+      els.totalTime.textContent = [seconds ? `${formatSeconds(seconds)} de música` : '', mode, `${state.completed.size} tocada${state.completed.size === 1 ? '' : 's'}`].filter(Boolean).join(' · ');
+    }
+
+    function showLive() {
+      els.welcome.hidden = true;
+      els.status.hidden = false;
+      els.setlistPanel.hidden = false;
+      els.stagePanel.hidden = false;
+      els.rightPanel.hidden = false;
+      els.title.textContent = state.live.titulo || 'Console da Live';
+      els.subtitle.textContent = [state.live.data, state.live.horario, state.live.objetivo].filter(Boolean).join(' · ');
+      els.songCount.textContent = `${state.live.musicas.length} músicas`;
+      selectSong(0);
+    }
+
+    els.liveFile.addEventListener('change', async event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        state.live = validateLive(JSON.parse(await file.text()));
+        state.current = 0;
+        state.completed.clear();
+        state.startedAt = null;
+        state.endedAt = null;
+        restoreExecutionState();
+        els.error.textContent = '';
+        showLive();
+      } catch (error) {
+        els.error.textContent = `Não consegui abrir a live: ${error.message}`;
+      }
+      event.target.value = '';
+    });
+
+    els.assetsFolder.addEventListener('change', event => {
+      const files = [...event.target.files];
+      files.forEach(file => {
+        state.assets.set(assetKey(file.name), file);
+        state.assets.set(assetKey(file.webkitRelativePath), file);
+        const withoutRoot = file.webkitRelativePath.split('/').slice(1).join('/');
+        if (withoutRoot) state.assets.set(assetKey(withoutRoot), file);
+      });
+      const root = files[0]?.webkitRelativePath.split('/')[0];
+      if (root) state.folders.add(root);
+      els.folderStatus.textContent = state.folders.size ? `✓ ${[...state.folders].join(' + ')}` : '';
+      if (state.live) selectSong(state.current);
+      event.target.value = '';
+    });
+
+    els.prev.addEventListener('click', () => selectSong(state.current - 1));
+    els.next.addEventListener('click', () => selectSong(state.current + 1));
+    els.done.addEventListener('click', () => {
+      if (!state.startedAt || state.endedAt) return;
+      if (state.completed.has(state.current)) {
+        state.completed.delete(state.current);
+        saveExecutionState();
+        selectSong(state.current);
+        return;
+      }
+      state.completed.add(state.current);
+      saveExecutionState();
+      if (state.current < state.live.musicas.length - 1) selectSong(state.current + 1);
+      else { renderSetlist(); renderStatus(); syncExecutionControls(); }
+    });
+
+    els.startLive.addEventListener('click', () => {
+      if (!state.live) return;
+      if (state.endedAt && !window.confirm('Reabrir esta live para continuar ajustando o registro?')) return;
+      state.startedAt = state.startedAt || new Date().toISOString();
+      state.endedAt = null;
+      saveExecutionState();
+      renderStatus();
+      syncExecutionControls();
+    });
+
+    els.finishLive.addEventListener('click', () => {
+      if (!state.live || !state.startedAt) return;
+      if (!window.confirm('Terminar a live e gerar o registro das músicas tocadas?')) return;
+      state.endedAt = new Date().toISOString();
+      saveExecutionState();
+      renderStatus();
+      syncExecutionControls();
+      downloadExecution();
+    });
+    els.exportExecution.addEventListener('click', downloadExecution);
+
+    window.addEventListener('beforeunload', releaseObjectUrls);
+  </script>
+</body>
+</html>
