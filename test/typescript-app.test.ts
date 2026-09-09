@@ -50,3 +50,15 @@ test('mount legado expõe o console v0 baseado em JSON sem alterar as APIs', asy
   await app.close();
   database.close();
 });
+
+test('shell V1 possui uma fronteira de rota separada do legacy', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'live-console-v1-'));
+  const database = openDatabase(join(root, 'catalogo.sqlite'));
+  const app = createApp({ database, storageRoot: join(root, 'storage') });
+  const v1 = await app.inject({ method: 'GET', url: '/v1' });
+  assert.ok([200, 503].includes(v1.statusCode), 'shell não deve cair no catch-all da aplicação atual');
+  const legacy = await app.inject({ method: 'GET', url: '/legacy' });
+  assert.equal(legacy.statusCode, 200);
+  await app.close();
+  database.close();
+});
