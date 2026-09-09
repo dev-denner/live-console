@@ -10,10 +10,10 @@ import { fileURLToPath } from 'node:url';
 import {
   addSource, createMusic, exportCatalog, getMusic,
   listMusic, openDatabase, removeMusic, removeSource, reorderSources, setLyrics,
-  setPrimarySource, updateMusic, updateSource, createLive, getLive, listLives, updateLive, removeLive, addLiveItem, updateLiveItem, removeLiveItem, reorderLiveItems, exportLegacyLive
+  setPrimarySource, updateMusic, updateSource, createLive, getLive, listLives, updateLive, removeLive, addLiveItem, updateLiveItem, removeLiveItem, reorderLiveItems, exportLegacyLive, listBlocks, getBlock, createBlock, updateBlock, removeBlock, addBlockMusic, removeBlockMusic, reorderBlockMusic, addBlockToLive
 } from './src/db/repositories.js';
 import { confirmImport, inspectImport } from './src/importer.mjs';
-import { musicPatchSchema, musicSchema, sourceSchema, messageForValidation } from './src/contracts.js';
+import { musicPatchSchema, musicSchema, sourceSchema, blocoSchema, blocoPatchSchema, blocoMusicSchema, orderSchema, messageForValidation } from './src/contracts.js';
 import { z } from 'zod';
 
 const appRoot = fileURLToPath(new URL('.', import.meta.url));
@@ -152,6 +152,14 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
     return { relatorio: confirmImport(database, body.payload, { partial: body.partial === true, storageRoot }) };
   });
   app.get('/api/exportacao', async () => exportCatalog(database));
+  app.get('/api/blocos', async () => ({ blocos: listBlocks(database) }));
+  app.post('/api/blocos', async (request,reply) => { const parsed=blocoSchema.safeParse(request.body);if(!parsed.success)throw badRequest(messageForValidation(parsed.error));const id=createBlock(database,parsed.data);reply.code(201);return {bloco:getBlock(database,id)}; });
+  app.get('/api/blocos/:id', async (request,reply) => {const bloco=getBlock(database,(request.params as {id:string}).id);return bloco?{bloco}:reply.code(404).send({error:'Não encontrado'});});
+  app.patch('/api/blocos/:id', async (request,reply) => {const parsed=blocoPatchSchema.safeParse(request.body);if(!parsed.success)throw badRequest(messageForValidation(parsed.error));const bloco=updateBlock(database,(request.params as {id:string}).id,parsed.data);return bloco?{bloco}:reply.code(404).send({error:'Não encontrado'});});
+  app.delete('/api/blocos/:id', async (request,reply) => removeBlock(database,(request.params as {id:string}).id)?reply.code(204).send():reply.code(404).send({error:'Não encontrado'}));
+  app.post('/api/blocos/:id/musicas', async (request,reply) => {const parsed=blocoMusicSchema.safeParse(request.body);if(!parsed.success)throw badRequest(messageForValidation(parsed.error));const bloco=addBlockMusic(database,(request.params as {id:string}).id,parsed.data.musicaId);reply.code(201);return {bloco};});
+  app.delete('/api/blocos/:id/musicas/:musicaId', async (request,reply) => removeBlockMusic(database,(request.params as {id:string}).id,(request.params as {musicaId:string}).musicaId)?reply.code(204).send():reply.code(404).send({error:'Não encontrado'}));
+  app.put('/api/blocos/:id/musicas/ordem', async (request) => {const parsed=orderSchema.safeParse(request.body);if(!parsed.success)throw badRequest(messageForValidation(parsed.error));return {musicas:reorderBlockMusic(database,(request.params as {id:string}).id,parsed.data.ids)};});
   app.get('/api/lives', async () => ({ lives: listLives(database) }));
   app.post('/api/lives', async (request, reply) => { const parsed=liveSchema.safeParse(request.body);if(!parsed.success)throw badRequest(messageForValidation(parsed.error)); const id=createLive(database,parsed.data);reply.code(201);return {live:getLive(database,id)}; });
   app.get('/api/lives/:id', async (request, reply) => { const live=getLive(database,(request.params as {id:string}).id);return live?{live}:reply.code(404).send({error:'Não encontrada'}); });
@@ -162,6 +170,7 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
   app.delete('/api/lives/:id/itens/:itemId', async (request, reply) => {const p=request.params as {id:string;itemId:string};return removeLiveItem(database,p.id,p.itemId)?reply.code(204).send():reply.code(404).send({error:'Não encontrada'});});
   app.put('/api/lives/:id/itens/ordem', async (request) => {const ids=(request.body as {ids?:string[]}).ids;if(!Array.isArray(ids))throw badRequest('ids deve ser uma lista');return {itens:reorderLiveItems(database,(request.params as {id:string}).id,ids)};});
   app.get('/api/lives/:id/exportacao', async (request,reply) => {const x=exportLegacyLive(database,(request.params as {id:string}).id);return x??reply.code(404).send({error:'Não encontrada'});});
+  app.post('/api/lives/:id/blocos/:blocoId/itens', async (request,reply) => {try{return addBlockToLive(database,(request.params as {id:string}).id,(request.params as {blocoId:string}).blocoId);}catch(error){const message=(error as Error).message;if(['Live não está em rascunho','Música do bloco sem fonte principal válida'].includes(message))return reply.code(409).send({error:message});throw error;}});
   app.post('/api/uploads/:kind', async (request, reply) => {
     const kind = (request.params as { kind: string }).kind;
     const accepted = uploadExtensions[kind];
@@ -191,6 +200,7 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
   });
   app.get('/catalogo', async (_request, reply) => sendStatic(reply, '/catalogo.html'));
   app.get('/lives', async (_request, reply) => sendStatic(reply, '/lives.html'));
+  app.get('/blocos', async (_request, reply) => sendStatic(reply, '/blocos.html'));
   app.get('/', async (_request, reply) => sendStatic(reply, '/'));
   app.get('/*', async (request, reply) => {
     const pathname = request.url.split('?')[0] ?? '/';

@@ -27,4 +27,6 @@ O console legado continua carregando seus JSONs sem migração e preserva `youtu
 
 Formato: veja `docs/import-format/musicas.schema.json` e `musicas.example.json`. A exportação JSON pode ser reimportada em um banco vazio.
 
-Limitações: armazenamento é local e uploads são limitados a 5 MB. Próximas etapas: blocos reutilizáveis, relação muitos-para-muitos entre blocos e músicas, ordem de músicas dentro de blocos e seleção de um bloco inteiro para o repertório; isso ainda não é implementado.
+## Blocos reutilizáveis
+
+`/blocos` mantém grupos reutilizáveis em uma relação N:N com músicas, com ordem independente em cada bloco. Um bloco pode ser incluído manualmente apenas em uma live em rascunho: a referência principal atual é copiada literalmente para cada novo item, sem alterar catálogo ou `xEmLives`. Duplicatas já presentes são informadas e ignoradas; qualquer música sem fonte principal interrompe toda a inclusão. O campo textual histórico `bloco` do catálogo continua independente e nunca é sincronizado com esses vínculos.
