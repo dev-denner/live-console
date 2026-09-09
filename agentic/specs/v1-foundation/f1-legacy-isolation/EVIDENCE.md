@@ -2,25 +2,48 @@
 
 ## Estado e escopo
 
-- **VERIFICADO** — branch `feat/foundation-f1-legacy-isolation`, commits `177fa8f`, `7a41c42` e correção atual, PR draft [#25](https://github.com/dev-denner/live-console/pull/25).
-
-- **VERIFICADO** — branch de trabalho criada a partir de `origin/master` após fast-forward; `.mcp.json` continua não rastreado.
-- **VERIFICADO** — alteração de produção limitada a `server.ts`, `package.json` e asset histórico `legacy/index.html`; sem migration/schema e sem alteração de dados locais.
-- **VERIFICADO** — `server.ts` usa Fastify, serve HTML compilado de `dist` e mantém APIs em `/api/*`.
+- **VERIFICADO** — branch `feat/foundation-f1-legacy-isolation`, HEAD `aafaa58`, PR #25.
+- **VERIFICADO** — implementação aditiva: a raiz mantém catálogo, lives, blocos e execução; `/legacy` expõe somente o console v0 histórico.
+- **VERIFICADO** — origem histórica escolhida: commit `1f8a2e6`, arquivo original `index.html`.
+- **VERIFICADO** — `.mcp.json` continua não rastreado.
+- **VERIFICADO** — nenhuma migration, schema, repositório ou dado local foi alterado.
 
 ## Validações automatizadas
 
-- **VERIFICADO** — `npm install`, `npm run build`, migration em SQLite temporário, `npm run typecheck`, `npm run lint`, `npm test` (17 testes aprovados) e `git diff --check` passaram.
+- **VERIFICADO** — `npm install`.
+- **VERIFICADO** — `npm run build`.
+- **VERIFICADO** — migration em SQLite temporário.
+- **VERIFICADO** — `npm run typecheck`.
+- **VERIFICADO** — `npm run lint`.
+- **VERIFICADO** — `npm test`: 17 testes aprovados.
+- **VERIFICADO** — `git diff --check`.
 
 ## Smoke HTTP
 
-- **VERIFICADO** — smoke compilado em SQLite temporário: 200 para `/api/health`, `/`, `/catalogo`, `/lives`, `/blocos`, `/execucao` e `/legacy`; `/legacy/catalogo`, `/legacy/lives`, `/legacy/blocos` e `/legacy/execucao` retornam 404.
+- **VERIFICADO** — 200 para:
+  - `/api/health`;
+  - `/`;
+  - `/catalogo`;
+  - `/lives`;
+  - `/blocos`;
+  - `/execucao`;
+  - `/legacy`.
+- **VERIFICADO** — 404 para:
+  - `/legacy/catalogo`;
+  - `/legacy/lives`;
+  - `/legacy/blocos`;
+  - `/legacy/execucao`.
 
 ## Jornadas browser
 
-- **BLOQUEADO** — a ferramenta `agent-browser` não está instalada nesta sessão (`command not found`). Não foi possível abrir, clicar, recarregar ou capturar console do navegador. A jornada deve abrir diretamente `/legacy`; não há validação visual disponível.
-- **NÃO VERIFICADO** — jornada visual do console JSON, seleção de arquivo, reprodução, letra e erro de JSON no browser.
+- **BLOQUEADO** — `agent-browser` não está instalado nesta sessão (`command not found`).
+- **NÃO VERIFICADO** — seleção de fixture JSON, reprodução, letra, interações, troca de música, recarregamento e erro visual de JSON.
+- **NÃO VERIFICADO** — ausência de erros no console do navegador.
 
-## Limitações e decisão
+A F1 não deve ser declarada visualmente concluída até que essas jornadas sejam executadas com navegador disponível.
 
-O mount é reversível e preserva os contratos, mas a aceitação integral da F1 depende de repetir as jornadas com navegador disponível. Recomenda-se não marcar a etapa como concluída até essa execução; F2 deve manter `/legacy` como superfície de compatibilidade.
+## Resultado
+
+A estrutura de código está consistente com o escopo aprovado: `/legacy` é somente o console v0 baseado em JSON, enquanto as páginas atuais continuam na raiz.
+
+A limitação browser permanece registrada para a próxima validação. A PR pode ser integrada como isolamento estrutural/documental, desde que essa limitação permaneça explícita e a futura verificação visual seja mantida como pendência.
