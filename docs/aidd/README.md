@@ -1,23 +1,22 @@
 # Live Console AI-Driven Development
 
-This directory is the source of truth for the Live Console v1 rebuild. It does not replace the working local application yet.
+This directory contains human-facing decision and research artifacts for the Live Console v1 rebuild. The canonical, tool-agnostic instructions shared by Codex, Copilot, Claude Code, people and future agents live under [`agentic/`](../../agentic/README.md).
 
-## Decision in force
+## Decision proposed
 
-- Frontend: Angular, standalone components, strict TypeScript.
-- Client state: Angular Signals plus NgRx SignalStore for feature state; no Akita in new code.
-- Backend: Fastify + TypeScript, kept as a local API/server for the Angular build.
+- Frontend: Angular standalone components, strict TypeScript.
+- Client state: Angular Signals plus NgRx SignalStore for feature state; no Akita in new code without an approved ADR.
+- Backend: Fastify + TypeScript as the local API/server.
 - Persistence: SQLite + Drizzle repositories; existing SQL migrations remain the sole migration authority.
-- Legacy: the currently working console and HTML pages remain available under `/legacy` during the rebuild.
+- Legacy: preserve the currently working console under `/legacy` during the rebuild.
 
-See [ADR-001](adr/ADR-001-angular-fastify.md) for the decision and [the workflow](specs/README.md) for how each v1 feature is specified before implementation.
+See [ADR-001](adr/ADR-001-angular-fastify.md) for the trade-offs. It remains **proposed** until explicitly approved. The initial foundation plan is [`agentic/specs/v1-foundation`](../../agentic/specs/v1-foundation/README.md).
 
-## Delivery sequence
+## Artifact roles
 
-1. Foundation: isolate legacy, add Angular workspace and API boundary without changing business behavior.
-2. Catalog list and manual registration.
-3. Catalog details, sources and letters.
-4. Imports/exports and uploads.
-5. Blocks, live builder, automatic assembly and execution history.
+- `docs/aidd/adr/`: human-readable architecture decisions and alternatives.
+- `docs/aidd/research/`: sources and synthesis used to inform decisions.
+- `docs/aidd/specs/`: workflow guidance and historical feature artifacts.
+- `agentic/specs/`: canonical delivery specs and evidence.
 
-Each feature must have an approved specification, implementation evidence and browser verification before it is declared complete.
+Do not implement from an implementation prompt alone. Use an approved feature spec, then record tests, browser evidence and known limitations.
