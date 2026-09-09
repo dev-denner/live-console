@@ -1,0 +1,4 @@
+PRAGMA ignore_check_constraints = ON;
+CREATE TABLE IF NOT EXISTS execucao_itens_live (live_id TEXT NOT NULL, item_id TEXT NOT NULL, musica_id TEXT NOT NULL, estado TEXT NOT NULL DEFAULT 'pendente' CHECK(estado IN ('pendente','tocada','pulada')), executada_em TEXT, posicao_real INTEGER, referencia_usada TEXT, observacao TEXT, atualizada_em TEXT NOT NULL, PRIMARY KEY(live_id,item_id));
+CREATE TABLE IF NOT EXISTS eventos_execucao_live (id TEXT PRIMARY KEY, live_id TEXT NOT NULL, item_id TEXT, acao TEXT NOT NULL, idempotency_key TEXT NOT NULL UNIQUE, estado_anterior TEXT, estado_novo TEXT, efeito_x_em_lives INTEGER NOT NULL DEFAULT 0, dados_json TEXT NOT NULL, criada_em TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS execucao_lives (live_id TEXT PRIMARY KEY, iniciada_em TEXT, encerrada_em TEXT, atualizada_em TEXT NOT NULL);
