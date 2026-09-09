@@ -31,7 +31,7 @@ O build copia `legacy/` para `dist/legacy`. Não existem páginas administrativa
 
 ## Contratos preservados
 
-Todas as APIs permanecem em `/api/*), com os payloads JSON atuais.
+Todas as APIs permanecem em `/api/*`, com os payloads JSON atuais.
 
 SQLite, migrations, Drizzle, exportação legada, repertórios e invariantes de `xEmLives` não são alterados.
 
