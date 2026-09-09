@@ -10,10 +10,10 @@ import { fileURLToPath } from 'node:url';
 import {
   addSource, createMusic, exportCatalog, getMusic,
   listMusic, openDatabase, removeMusic, removeSource, reorderSources, setLyrics,
-  setPrimarySource, updateMusic, updateSource, createLive, getLive, listLives, updateLive, removeLive, addLiveItem, updateLiveItem, removeLiveItem, reorderLiveItems, exportLegacyLive, listBlocks, getBlock, createBlock, updateBlock, removeBlock, addBlockMusic, removeBlockMusic, reorderBlockMusic, addBlockToLive
+  setPrimarySource, updateMusic, updateSource, createLive, getLive, listLives, updateLive, removeLive, addLiveItem, updateLiveItem, removeLiveItem, reorderLiveItems, exportLegacyLive, listBlocks, getBlock, createBlock, updateBlock, removeBlock, addBlockMusic, removeBlockMusic, reorderBlockMusic, addBlockToLive, previewMontagem, confirmMontagem, getMontagem
 } from './src/db/repositories.js';
 import { confirmImport, inspectImport } from './src/importer.mjs';
-import { musicPatchSchema, musicSchema, sourceSchema, blocoSchema, blocoPatchSchema, blocoMusicSchema, orderSchema, messageForValidation } from './src/contracts.js';
+import { musicPatchSchema, musicSchema, sourceSchema, blocoSchema, blocoPatchSchema, blocoMusicSchema, orderSchema, montagemSchema, messageForValidation } from './src/contracts.js';
 import { z } from 'zod';
 
 const appRoot = fileURLToPath(new URL('.', import.meta.url));
@@ -170,6 +170,9 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
   app.delete('/api/lives/:id/itens/:itemId', async (request, reply) => {const p=request.params as {id:string;itemId:string};return removeLiveItem(database,p.id,p.itemId)?reply.code(204).send():reply.code(404).send({error:'Não encontrada'});});
   app.put('/api/lives/:id/itens/ordem', async (request) => {const ids=(request.body as {ids?:string[]}).ids;if(!Array.isArray(ids))throw badRequest('ids deve ser uma lista');return {itens:reorderLiveItems(database,(request.params as {id:string}).id,ids)};});
   app.get('/api/lives/:id/exportacao', async (request,reply) => {const x=exportLegacyLive(database,(request.params as {id:string}).id);return x??reply.code(404).send({error:'Não encontrada'});});
+  app.post('/api/lives/:id/montagem/previa', async (request,reply) => {const parsed=montagemSchema.safeParse(request.body);if(!parsed.success)throw badRequest(messageForValidation(parsed.error));try{const preview=previewMontagem(database,(request.params as {id:string}).id,parsed.data);return preview.conflitos.length?reply.code(422).send(preview):preview;}catch(error){const m=(error as Error).message;return reply.code(m==='Live não encontrada'?404:409).send({error:m});}});
+  app.post('/api/lives/:id/montagem/confirmacao', async (request,reply) => {const parsed=montagemSchema.safeParse(request.body);if(!parsed.success)throw badRequest(messageForValidation(parsed.error));try{return confirmMontagem(database,(request.params as {id:string}).id,parsed.data);}catch(error){const m=(error as Error & {preview?:unknown}).message;if(m==='Critérios impossíveis')return reply.code(422).send({error:m,relatorio:(error as Error & {preview:unknown}).preview});return reply.code(m==='Live não encontrada'?404:409).send({error:m});}});
+  app.get('/api/lives/:id/montagem', async (request,reply) => {if(!getLive(database,(request.params as {id:string}).id))return reply.code(404).send({error:'Não encontrada'});const montagem=getMontagem(database,(request.params as {id:string}).id);return montagem?{montagem}:reply.code(404).send({error:'Montagem não encontrada'});});
   app.post('/api/lives/:id/blocos/:blocoId/itens', async (request,reply) => {try{return addBlockToLive(database,(request.params as {id:string}).id,(request.params as {blocoId:string}).blocoId);}catch(error){const message=(error as Error).message;if(['Live não está em rascunho','Música do bloco sem fonte principal válida'].includes(message))return reply.code(409).send({error:message});throw error;}});
   app.post('/api/uploads/:kind', async (request, reply) => {
     const kind = (request.params as { kind: string }).kind;
