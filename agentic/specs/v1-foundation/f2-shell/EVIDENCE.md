@@ -2,28 +2,38 @@
 
 ## Estado
 
-- **PLANEJADO** — F2 cria o shell Angular e a fronteira local sem substituir páginas atuais.
-- **PLANEJADO** — superfície temporária da V1: `/v1`.
-- **PENDENTE** — implementação ainda não iniciada; este documento será atualizado durante a execução.
+- **IMPLEMENTAÇÃO EM PR DRAFT** — o shell Angular standalone foi criado sem substituir as páginas atuais.
+- **Superfície V1:** `/v1`.
+- **Legado preservado:** `/legacy` continua sendo exclusivamente o console v0 baseado em JSON.
+- **Páginas atuais preservadas:** `/`, `/catalogo`, `/lives`, `/blocos` e `/execucao`.
 
-## Decisões registradas
+## Implementação
 
-- Angular standalone + TypeScript strict + Signals.
-- NgRx SignalStore somente quando uma feature possuir estado compartilhado suficiente para justificar store.
-- Fastify/TypeScript permanece no processo local existente.
-- SQLite, Drizzle e migrations SQL continuam sob suas autoridades atuais.
-- `/legacy` continua sendo o console v0 baseado em JSON.
+- Frontend Angular standalone em `frontend/`, com TypeScript strict, Signals e roteamento lazy para o shell.
+- Contrato mínimo tipado `HealthResponse` consumindo `GET /api/health`.
+- Estados explícitos de carregamento, sucesso, erro e retry na tela do shell.
+- Backend Fastify mantém a mesma instância local e expõe `/v1` como fronteira separada.
+- `npm install` instala também as dependências do frontend via `postinstall`.
+- NgRx SignalStore não foi introduzido: nesta fundação ainda não existe estado compartilhado de feature que justifique um store.
 
-## Evidências exigidas
+## Validações executadas localmente
 
-- build do frontend e backend;
-- typecheck e testes;
-- smoke HTTP das superfícies raiz, `/legacy` e `/v1`;
-- jornada browser em `/v1` com sucesso e erro da API;
-- jornada browser regressiva em `/legacy` com fixture JSON;
-- `git diff --check`;
-- `git status` sem banco, mídia, repertório pessoal, export ou segredo.
+- `npm run build` — aprovado; build Angular production e backend TypeScript.
+- `npm run typecheck` — aprovado.
+- `npm run lint` — aprovado.
+- `npm test` — aprovado; todos os testes existentes passaram.
+- `git diff --check` — aprovado.
+- teste de injeção Fastify para `/v1` e `/legacy` — aprovado; a fronteira V1 não cai no catch-all e o legado continua respondendo.
+- instalação do frontend com `npm --prefix frontend install --no-package-lock` — aprovada.
 
-## Resultado
+## Evidência pendente
 
-Ainda não concluído. A implementação só poderá ser marcada pronta quando todas as evidências acima estiverem anexadas e a PR estiver revisada.
+A jornada browser desta PR deve ser executada no WSL com `agent-browser`:
+
+1. abrir `http://localhost:8787/v1`;
+2. confirmar o shell renderizado e o estado de sucesso da API;
+3. interromper ou tornar indisponível a API e confirmar o estado de erro e o retry;
+4. abrir `http://localhost:8787/legacy` e repetir a jornada com fixture JSON, sem alteração visual ou funcional do console v0;
+5. registrar screenshots/resultado nesta seção.
+
+A PR não deve ser marcada como concluída enquanto essa validação browser não estiver anexada.
