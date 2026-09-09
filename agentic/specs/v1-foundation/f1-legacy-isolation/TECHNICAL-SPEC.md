@@ -2,28 +2,77 @@
 
 ## Estratégia
 
-O Fastify adiciona uma única rota `/legacy` que serve `legacy/index.html`, extraído do commit histórico `1f8a2e6` (antes do SQLite e catálogo). O documento é autocontido e lê JSON via File API; `/local` continua disponível apenas para referências locais quando o iniciador/servidor é usado.
+O Fastify adiciona uma única rota de página:
+
+```text
+/legacy
+```
+
+Essa rota serve `legacy/index.html`, extraído do commit histórico `1f8a2e6`, anterior ao SQLite e ao catálogo.
+
+O documento é autocontido, lê o arquivo JSON pela File API e preserva o fluxo original de início de live.
 
 ## Mapeamento
 
-| Rota | Arquivo |
+| Rota | Comportamento |
 |---|---|
-| `/legacy` | `legacy/index.html` |
+| `/` | aplicação atual |
+| `/catalogo` | catálogo atual |
+| `/lives` | lives atuais |
+| `/blocos` | blocos atuais |
+| `/execucao` | execução atual |
+| `/legacy` | console v0 histórico baseado em JSON |
+| `/legacy/catalogo` | 404 |
+| `/legacy/lives` | 404 |
+| `/legacy/blocos` | 404 |
+| `/legacy/execucao` | 404 |
 
-O build copia `legacy/` para `dist/legacy`. Não existem rotas de página `/legacy/catalogo`, `/legacy/lives`, `/legacy/blocos` ou `/legacy/execucao`; a raiz e essas páginas atuais não são redirecionadas.
+O build copia `legacy/` para `dist/legacy`. Não existem páginas administrativas dentro de `/legacy`.
 
 ## Contratos preservados
 
-Todas as APIs permanecem em `/api/*`, com os payloads JSON atuais. SQLite, migrations, Drizzle, exportação legada, repertórios e invariantes de `xEmLives` não são alterados.
+Todas as APIs permanecem em `/api/*), com os payloads JSON atuais.
 
-## Refresh, deep links e rollback
+SQLite, migrations, Drizzle, exportação legada, repertórios e invariantes de `xEmLives` não são alterados.
 
-Cada rota possui handler próprio antes do wildcard; refresh devolve o mesmo documento e desconhecidos retornam 404. Reverter consiste em remover os handlers/helper e o diretório de especificação; nenhum dado persistido é afetado.
+O console v0 continua aceitando o formato legado, incluindo:
+
+```json
+{
+  "titulo": "...",
+  "artista": "...",
+  "fonte": "youtube",
+  "youtube": "...",
+  "arquivo": "...",
+  "letra": "...",
+  "observacao": "...",
+  "interacoes": []
+}
+```
+
+## Refresh e rollback
+
+`/legacy` deve retornar o console histórico após refresh. Rotas administrativas atuais continuam sendo servidas na raiz.
+
+Rotas desconhecidas do namespace legado retornam 404.
+
+Reverter consiste em remover o handler de `/legacy`, o asset histórico e sua cópia no build. Nenhum dado persistido é afetado.
 
 ## Testes
 
-Build, migration em SQLite temporário, typecheck, lint, testes unitários, smoke HTTP das páginas/API e verificação de CSS/JS. Jornadas browser devem ser executadas quando o agente de navegador estiver disponível; indisponibilidade é `BLOQUEADO`, não evidência de sucesso.
+Build, migration em SQLite temporário, typecheck, lint, testes unitários e smoke HTTP devem passar.
 
-## Arquivos de produção alterados
+A jornada browser deve abrir diretamente `/legacy`, selecionar um fixture JSON, carregar a lista, iniciar a live, trocar de música, verificar letra/interações e tratar JSON inválido.
 
-Somente `server.ts`; nenhuma migration, schema, repositório, HTML ou asset foi reescrito.
+Se a ferramenta browser estiver indisponível, o resultado deve ser classificado como `BLOQUEADO`, nunca como sucesso.
+
+## Arquivos alterados
+
+A implementação altera apenas o necessário para:
+
+- servir `/legacy`;
+- copiar o asset histórico no build;
+- manter o fixture/teste de regressão;
+- documentar o contrato.
+
+Não altera migrations, schema, repositórios ou dados locais.
