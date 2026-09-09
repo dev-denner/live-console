@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { isAbsolute, resolve } from 'node:path';
-import { createMusic, listMusic, getMusic, updateMusic, addSource, transaction } from './db.mjs';
+import { createMusic, listMusic, getMusic, updateMusic, addSource, transaction } from './db/repositories.js';
 const identity = item => `${item.artista}\u0000${item.titulo}\u0000${item.musicaBase ?? item.titulo}`;
 const sourceIdentity = source => `${source.tipo}\u0000${source.referencia}`;
 const permitted = new Set(['youtube','audio','video']);
