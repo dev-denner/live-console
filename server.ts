@@ -81,7 +81,7 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
     const parsed = musicSchema.safeParse(request.body);
     if (!parsed.success) throw badRequest(messageForValidation(parsed.error));
     const { fontes = [], ...music } = parsed.data;
-    const id = createMusic(database, music);
+    const id = createMusic(database, { ...music, status: music.status || 'ensaiar' });
     for (const source of fontes) addSource(database, id, source);
     reply.code(201);
     return { musica: getMusic(database, id) };
@@ -151,6 +151,7 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
     const body = request.body as { payload?: unknown; partial?: boolean };
     return { relatorio: confirmImport(database, body.payload, { partial: body.partial === true, storageRoot }) };
   });
+  app.get('/api/importacao/modelo', async (_request, reply) => reply.header('Content-Disposition', 'attachment; filename="musicas.skeleton.json"').type('application/json').send(await readFile(join(appRoot, 'docs', 'import-format', 'musicas.skeleton.json'))));
   app.get('/api/exportacao', async () => exportCatalog(database));
   app.get('/api/blocos', async () => ({ blocos: listBlocks(database) }));
   app.post('/api/blocos', async (request,reply) => { const parsed=blocoSchema.safeParse(request.body);if(!parsed.success)throw badRequest(messageForValidation(parsed.error));const id=createBlock(database,parsed.data);reply.code(201);return {bloco:getBlock(database,id)}; });
