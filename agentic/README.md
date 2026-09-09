@@ -1,76 +1,44 @@
 # Live Console — Agentic Assets
 
-Este diretório contém os ativos agênticos usados para preparar, validar e futuramente analisar as lives de Denner Zacarias.
+`agentic/` é a casa canônica, independente de ferramenta, para os ativos que orientam pessoas e agentes no Live Console. Nenhuma regra permanente deve depender apenas do histórico de uma conversa ou de um agente específico.
 
-## Objetivo
+## Quem usa
 
-Transformar procedimentos recorrentes das lives em processos explícitos e reutilizáveis, reduzindo a dependência de contexto acumulado em conversas.
+- pessoas que especificam, revisam ou validam;
+- Codex, GitHub Copilot, Claude Code e outros agentes;
+- automações locais futuras.
 
-O chat fornece principalmente:
-- a intenção atual;
-- pedidos novos;
-- músicas novas;
-- exceções do dia;
-- feedback recente.
-
-As regras permanentes devem viver nas Skills e Specs.
+Um adaptador de ferramenta pode apontar para estes arquivos, mas não deve duplicar a autoridade.
 
 ## Estrutura
 
+```text
 agentic/
-├── skills/
-│   ├── build-live-setlist/
-│   │   └── SKILL.md
-│   └── validate-live-setlist/
-│       └── SKILL.md
-└── specs/
-    └── prepare-daily-live/
-        └── SPEC.md
-
-## Fontes de contexto
-
-A pasta raiz das lives contém dados vivos que NÃO devem ser duplicados dentro das Skills:
-
-- `musicas/` — catálogo e arquivos disponíveis;
-- `letras/` — letras disponíveis;
-- `repertorios/` — repertórios anteriores e resultados gerados;
-- `agencia-livestyle/` — orientações e restrições aplicáveis às lives;
-- `materiais/` — materiais auxiliares;
-- `live-console/` — aplicação e artefatos de execução.
-
-Quando houver planilha, JSON ou outra fonte canônica mais atual, ela deve prevalecer sobre exemplos ou informações antigas presentes nas Skills.
+  README.md
+  rules/                 # regras permanentes e verificáveis
+  skills/                # procedimentos reutilizáveis
+    aidd-feature/
+    live-console-domain/
+    build-live-setlist/
+    validate-live-setlist/
+  context/               # síntese factual e ponte entre specs
+  specs/                 # PRDs, specs técnicas e evidências por feature
+    v0.1/                # material histórico preservado
+    v1-foundation/       # primeira spec da reconstrução
+```
 
 ## Princípios
 
-1. Skill define COMO executar bem uma atividade recorrente.
-2. Spec define O QUE deve ser executado em um processo concreto.
-3. Dados vivos permanecem em suas fontes originais.
-4. Não inventar dados ausentes.
-5. Não alterar arquivos de origem para facilitar uma execução.
-6. Resultado só é considerado concluído após validação.
-7. Checkbox concluído significa tarefa executada e verificada, não apenas tentada.
-8. Instrução explícita dada por Denner para a live atual prevalece sobre defaults destas Skills.
+1. Skill define como realizar uma atividade recorrente.
+2. Rule define uma restrição permanente.
+3. Spec define o que uma entrega concreta deve fazer.
+4. Context resume o estado conhecido, com links para a evidência canônica.
+5. Dados pessoais, catálogo, mídia, letras, repertórios, SQLite, exports, caminhos e segredos não entram aqui.
+6. Instrução explícita mais recente de Denner prevalece sobre defaults, desde que não viole segurança ou privacidade.
+7. Nenhuma UI é considerada entregue apenas porque a rota responde: o caminho clicável deve ser testado no navegador.
 
-## Fluxo diário básico
+## V0 e V1
 
-prepare-daily-live
-        |
-        v
-build-live-setlist
-        |
-        v
-validate-live-setlist
-        |
-        +---- falhou ---> corrigir ---> validar novamente
-        |
-        v
-repertório aprovado
-        |
-        v
-salvar em repertorios/
+O material histórico permanece em `specs/v0.1/`. A reconstrução usa `skills/aidd-feature`, `skills/live-console-domain`, `rules/live-console-v1.md` e specs em `specs/v1-foundation/`.
 
-## Estado
-
-Versão inicial: V0.1
-
-Este conjunto deve evoluir a partir do uso real. Não adicionar complexidade apenas por formalismo.
+Durante a foundation, v0 ficará acessível em `/legacy`. V1 será especificada e validada página a página antes de substituir qualquer fluxo operacional.
