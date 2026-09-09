@@ -61,6 +61,33 @@ async function sendStatic(reply: FastifyReply, pathname: string): Promise<void> 
   reply.type(staticTypes[extname(file).toLowerCase()] ?? 'application/octet-stream').send(body);
 }
 
+const legacyPages: Record<string, string> = {
+  '/legacy': 'index.html',
+  '/legacy/': 'index.html',
+  '/legacy/catalogo': 'catalogo.html',
+  '/legacy/lives': 'lives.html',
+  '/legacy/blocos': 'blocos.html',
+  '/legacy/execucao': 'execucao.html'
+};
+
+async function sendLegacyPage(reply: FastifyReply, pathname: string): Promise<void> {
+  const filename = legacyPages[pathname];
+  if (!filename) {
+    reply.code(404).send({ error: 'Página legada não encontrada' });
+    return;
+  }
+  let body = (await readFile(resolve(appRoot, filename))).toString('utf8');
+  const pageLinks: Array<[string, string]> = [
+    ['/', '/legacy'],
+    ['/catalogo', '/legacy/catalogo'],
+    ['/lives', '/legacy/lives'],
+    ['/blocos', '/legacy/blocos'],
+    ['/execucao', '/legacy/execucao']
+  ];
+  for (const [from, to] of pageLinks) body = body.replaceAll(`href="${from}"`, `href="${to}"`);
+  reply.type('text/html; charset=utf-8').send(body);
+}
+
 const liveSchema = z.object({ id: z.string().uuid().optional(), titulo: z.string().trim().min(1), data: z.string().nullable().optional(), status: z.string().optional(), observacoes: z.string().nullable().optional() }).strict();
 const livePatchSchema = liveSchema.partial().omit({ id: true });
 const liveItemSchema = z.object({ id: z.string().uuid().optional(), musicaId: z.string().uuid(), referenciaReproducao: z.string().min(1), tipoReproducao: z.enum(['youtube', 'audio', 'video']), duracaoPlanejada: z.number().int().nonnegative().nullable().optional(), observacao: z.string().nullable().optional(), interacoes: z.string().nullable().optional() }).strict();
@@ -211,6 +238,12 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
   app.get('/lives', async (_request, reply) => sendStatic(reply, '/lives.html'));
   app.get('/blocos', async (_request, reply) => sendStatic(reply, '/blocos.html'));
   app.get('/execucao', async (_request, reply) => sendStatic(reply, '/execucao.html'));
+  app.get('/legacy', async (_request, reply) => sendLegacyPage(reply, '/legacy'));
+  app.get('/legacy/', async (_request, reply) => sendLegacyPage(reply, '/legacy/'));
+  app.get('/legacy/catalogo', async (_request, reply) => sendLegacyPage(reply, '/legacy/catalogo'));
+  app.get('/legacy/lives', async (_request, reply) => sendLegacyPage(reply, '/legacy/lives'));
+  app.get('/legacy/blocos', async (_request, reply) => sendLegacyPage(reply, '/legacy/blocos'));
+  app.get('/legacy/execucao', async (_request, reply) => sendLegacyPage(reply, '/legacy/execucao'));
   app.get('/', async (_request, reply) => sendStatic(reply, '/'));
   app.get('/*', async (request, reply) => {
     const pathname = request.url.split('?')[0] ?? '/';
