@@ -2,6 +2,8 @@
 
 ## Estado e escopo
 
+- **VERIFICADO** — branch `feat/foundation-f1-legacy-isolation`, commit `177fa8f`, PR draft [#25](https://github.com/dev-denner/live-console/pull/25).
+
 - **VERIFICADO** — branch de trabalho criada a partir de `origin/master` após fast-forward; `.mcp.json` continua não rastreado.
 - **VERIFICADO** — alteração de produção limitada a `server.ts`; sem migration/schema e sem alteração de dados locais.
 - **VERIFICADO** — `server.ts` usa Fastify, serve HTML compilado de `dist` e mantém APIs em `/api/*`.
