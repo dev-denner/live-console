@@ -1,0 +1,41 @@
+<div class="app-shell" data-testid="v1-app-shell">
+  <header class="topbar">
+    <a class="brand" routerLink="catalogo" aria-label="Live Console V1, ir para o catálogo">
+      <span class="eyebrow">LIVE CONSOLE · V1</span>
+      <strong>Foundation de aplicação</strong>
+    </a>
+    <a class="legacy-link" href="/legacy">Console v0</a>
+  </header>
+
+  <nav class="navigation" aria-label="Navegação da V1">
+    @for (item of navigation; track item.path) {
+      <a [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{ item.label }}</a>
+    }
+  </nav>
+
+  <section
+    class="health"
+    [class.success]="healthState().status === 'success'"
+    [class.error]="healthState().status === 'error'"
+    aria-live="polite"
+    data-testid="health-state"
+  >
+    <span class="health-dot" aria-hidden="true"></span>
+    @switch (healthState().status) {
+      @case ('loading') {
+        <span>Verificando conexão com o backend local…</span>
+      }
+      @case ('success') {
+        <span>Backend local saudável</span>
+      }
+      @case ('error') {
+        <span>{{ healthState().error.message }}</span>
+        <button type="button" (click)="checkHealth()">Tentar novamente</button>
+      }
+    }
+  </section>
+
+  <main class="content">
+    <router-outlet />
+  </main>
+</div>
