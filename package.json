@@ -4,12 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc && cp -R migrations dist/migrations && cp -R docs dist/docs && cp -R legacy dist/legacy && cp index.html catalogo.html catalogo-manual.js lives.html blocos.html execucao.html dist/",
+    "install:frontend": "npm --prefix frontend install --no-package-lock",
+    "postinstall": "npm run install:frontend",
+    "build:frontend": "npm --prefix frontend run build",
+    "build": "npm run build:frontend && tsc && cp -R migrations dist/migrations && cp -R docs dist/docs && cp -R legacy dist/legacy && cp index.html catalogo.html catalogo-manual.js lives.html blocos.html execucao.html dist/",
     "start": "npm run build && node dist/server.js",
     "dev": "node --import tsx server.ts",
     "db:migrate": "npm run build && node dist/src/migrate.mjs",
     "test": "node --import tsx --test --test-concurrency=1 test/**/*.test.mjs test/**/*.test.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && npm --prefix frontend run typecheck",
     "check": "npm run typecheck",
     "lint": "npm run typecheck"
   },

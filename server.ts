@@ -22,6 +22,8 @@ const projectRoot = basename(appRoot.replace(/[\\/]$/, '')).toLowerCase() === 'l
   : appRoot;
 const defaultDatabase = process.env.LIVE_CONSOLE_DB ?? join(appRoot, 'data', 'live-console.sqlite');
 const defaultStorage = resolve(process.env.LIVE_CONSOLE_STORAGE ?? join(appRoot, 'storage'));
+const workspaceRoot = existsSync(join(appRoot, 'frontend')) ? appRoot : resolve(appRoot, '..');
+const v1BrowserRoot = resolve(workspaceRoot, 'frontend', 'dist', 'live-console-v1', 'browser');
 const maxUploadBytes = 5 * 1024 * 1024;
 const staticTypes: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -64,6 +66,18 @@ async function sendStatic(reply: FastifyReply, pathname: string): Promise<void> 
 async function sendLegacyConsole(reply: FastifyReply): Promise<void> {
   const body = await readFile(resolve(appRoot, 'legacy', 'index.html'));
   reply.type('text/html; charset=utf-8').send(body);
+}
+
+async function sendV1(reply: FastifyReply, pathname = '/v1'): Promise<void> {
+  const relative = pathname.replace(/^\/v1\/?/, '');
+  const candidate = resolve(v1BrowserRoot, relative || 'index.html');
+  const file = isInside(v1BrowserRoot, candidate) && existsSync(candidate) ? candidate : resolve(v1BrowserRoot, 'index.html');
+  if (!existsSync(file)) {
+    reply.code(503).send({ error: 'Shell V1 ainda não foi compilado. Execute npm run build.' });
+    return;
+  }
+  const body = await readFile(file);
+  reply.type(staticTypes[extname(file).toLowerCase()] ?? 'application/octet-stream').send(body);
 }
 
 const liveSchema = z.object({ id: z.string().uuid().optional(), titulo: z.string().trim().min(1), data: z.string().nullable().optional(), status: z.string().optional(), observacoes: z.string().nullable().optional() }).strict();
@@ -218,6 +232,8 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
   app.get('/execucao', async (_request, reply) => sendStatic(reply, '/execucao.html'));
   app.get('/legacy', async (_request, reply) => sendLegacyConsole(reply));
   app.get('/legacy/*', async (_request, reply) => reply.code(404).send({ error: 'Página legada não encontrada' }));
+  app.get('/v1', async (_request, reply) => sendV1(reply));
+  app.get('/v1/*', async (request, reply) => sendV1(reply, request.url.split('?')[0] ?? '/v1'));
   app.get('/', async (_request, reply) => sendStatic(reply, '/'));
   app.get('/*', async (request, reply) => {
     const pathname = request.url.split('?')[0] ?? '/';

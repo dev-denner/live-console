@@ -1,0 +1,18 @@
+<main class="shell" data-testid="v1-shell">
+  <header>
+    <p class="eyebrow">LIVE CONSOLE · V1</p>
+    <h1>Foundation pronta para evoluir.</h1>
+    <p class="lead">Esta superfície Angular está separada do console legado e das páginas atuais.</p>
+  </header>
+
+  <section class="status" [class.success]="status() === 'success'" [class.error]="status() === 'error'" aria-live="polite">
+    <span class="dot" aria-hidden="true"></span>
+    <div>
+      <strong>{{ status() === 'loading' ? 'Verificando conexão' : status() === 'success' ? 'Backend local saudável' : 'Backend indisponível' }}</strong>
+      <p>{{ message() }}</p>
+    </div>
+  </section>
+
+  <button type="button" (click)="checkHealth()">Tentar novamente</button>
+  <p class="scope">O catálogo, as lives, os blocos, a execução e o <code>/legacy</code> continuam preservados nesta etapa.</p>
+</main>

@@ -1,0 +1,10 @@
+:host { display: block; min-height: 100vh; background: #0c111b; color: #f8fafc; font-family: Inter, system-ui, sans-serif; }
+.shell { width: min(720px, calc(100% - 32px)); margin: 0 auto; padding: 96px 0; }
+.eyebrow { color: #f5b84b; font-size: .78rem; font-weight: 800; letter-spacing: .16em; }
+h1 { margin: 12px 0; font-size: clamp(2rem, 6vw, 4rem); line-height: 1; }
+.lead, .scope, .status p { color: #9aa8bb; line-height: 1.6; }
+.status { display: flex; gap: 14px; align-items: flex-start; margin: 36px 0 20px; padding: 18px; border: 1px solid #334155; border-radius: 16px; background: #151e2c; }
+.status.success { border-color: #5ed2ad; }.status.error { border-color: #ff8191; }
+.status p { margin: 6px 0 0; }.dot { width: 12px; height: 12px; flex: 0 0 auto; margin-top: 4px; border-radius: 999px; background: #f5b84b; }.success .dot { background: #5ed2ad; }.error .dot { background: #ff8191; }
+button { padding: 11px 16px; border: 0; border-radius: 10px; background: #f5b84b; color: #211500; font-weight: 800; cursor: pointer; }button:hover { filter: brightness(1.08); }
+code { color: #f5b84b; }
