@@ -40,6 +40,7 @@ export const blocoSchema=z.object({id:z.string().uuid().optional(),nome:z.string
 export const blocoPatchSchema=blocoSchema.partial().omit({id:true});
 export const blocoMusicSchema=z.object({musicaId:z.string().uuid()}).strict();
 export const orderSchema=z.object({ids:z.array(z.string().uuid()).min(1)}).strict();
+export const montagemSchema=z.object({quantidade:z.number().int().positive(),autorais:z.number().int().nonnegative(),vibe:z.string().trim().min(1).optional(),clima:z.string().trim().min(1).optional(),objetivo:z.string().trim().min(1).optional(),blocoIds:z.array(z.string().uuid()).optional()}).strict().refine(x=>x.autorais<=x.quantidade,{message:'autorais não pode exceder quantidade',path:['autorais']});
 
 export function messageForValidation(error: z.ZodError): string {
   return error.issues.map((issue) => `${issue.path.join('.') || 'corpo'}: ${issue.message}`).join('; ');
