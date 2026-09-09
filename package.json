@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc && cp -R migrations dist/migrations && cp index.html catalogo.html lives.html blocos.html dist/",
+    "build": "tsc && cp -R migrations dist/migrations && cp index.html catalogo.html lives.html blocos.html execucao.html dist/",
     "start": "npm run build && node dist/server.js",
     "dev": "node --import tsx server.ts",
     "db:migrate": "npm run build && node dist/src/migrate.mjs",
