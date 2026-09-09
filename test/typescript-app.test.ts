@@ -36,17 +36,17 @@ test('servidor TypeScript preserva o contrato HTTP do catálogo', async () => {
   database.close();
 });
 
-test('mount legado expõe as páginas v0 sem alterar as APIs', async () => {
+test('mount legado expõe o console v0 baseado em JSON sem alterar as APIs', async () => {
   const root = mkdtempSync(join(tmpdir(), 'live-console-legacy-'));
   const database = openDatabase(join(root, 'catalogo.sqlite'));
   const app = createApp({ database, storageRoot: join(root, 'storage') });
-  for (const path of ['/legacy', '/legacy/catalogo', '/legacy/lives', '/legacy/blocos', '/legacy/execucao']) {
-    const response = await app.inject({ method: 'GET', url: path });
-    assert.equal(response.statusCode, 200, path);
-    assert.match(response.headers['content-type'] ?? '', /text\/html/);
+  const legacy = await app.inject({ method: 'GET', url: '/legacy' });
+  assert.equal(legacy.statusCode, 200);
+  assert.match(legacy.body, /Abra o JSON da live/);
+  assert.match(legacy.body, /type="file"/);
+  for (const path of ['/legacy/catalogo', '/legacy/lives', '/legacy/blocos', '/legacy/execucao']) {
+    assert.equal((await app.inject({ method: 'GET', url: path })).statusCode, 404, path);
   }
-  const catalog = await app.inject({ method: 'GET', url: '/legacy/catalogo' });
-  assert.match(catalog.body, /\/api/);
   await app.close();
   database.close();
 });

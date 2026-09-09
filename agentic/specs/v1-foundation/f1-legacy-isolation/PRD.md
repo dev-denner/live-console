@@ -2,15 +2,15 @@
 
 ## Problema e objetivo
 
-O v0 era servido diretamente na raiz, sem uma fronteira explícita para a futura aplicação v1. Esta fase expõe as mesmas páginas em `/legacy`, sem alterar regras, dados ou APIs.
+O console v0 original, baseado em arquivo JSON, não pode ser confundido com as páginas administrativas atuais. Esta fase oferece esse console em uma única entrada `/legacy`, sem alterar regras, dados ou APIs atuais.
 
 ## Escopo
 
-Mount explícito das páginas existentes (`index`, catálogo, lives, blocos e execução), preservando scripts, links de API, referências literais de mídia/letras e o comportamento da raiz. Não há Angular, páginas v1, migration ou mudança de schema.
+Isolamento do asset histórico `index.html` (commit `1f8a2e6`), preservando seleção de JSON, reprodução, letras e interações. Não há páginas administrativas em `/legacy`, Angular, migration ou mudança de schema. Catálogo, lives, blocos e execução permanecem na raiz.
 
 ## Usuários e jornadas
 
-Operadores locais continuam usando catálogo, lives, blocos, montagem e execução através de `/legacy`. As jornadas detalhadas e sua evidência estão em `EVIDENCE.md`.
+Operadores locais usam `/legacy` para carregar um repertório JSON e iniciar a live sem SQLite; as páginas administrativas continuam em `/catalogo`, `/lives`, `/blocos` e `/execucao`.
 
 ## Aceitação
 

@@ -2,19 +2,15 @@
 
 ## Estratégia
 
-O Fastify mantém os arquivos na raiz e adiciona um mount explícito com mapa de páginas. `sendLegacyPage` lê o mesmo HTML usado pelo v0 e altera somente `href` absolutos que apontam para páginas internas (`/`, `/catalogo`, `/lives`, `/blocos`, `/execucao`). Chamadas `/api/*`, `/local`, uploads, letras, mídia e scripts permanecem sem transformação.
+O Fastify adiciona uma única rota `/legacy` que serve `legacy/index.html`, extraído do commit histórico `1f8a2e6` (antes do SQLite e catálogo). O documento é autocontido e lê JSON via File API; `/local` continua disponível apenas para referências locais quando o iniciador/servidor é usado.
 
 ## Mapeamento
 
 | Rota | Arquivo |
 |---|---|
-| `/legacy`, `/legacy/` | `index.html` |
-| `/legacy/catalogo` | `catalogo.html` |
-| `/legacy/lives` | `lives.html` |
-| `/legacy/blocos` | `blocos.html` |
-| `/legacy/execucao` | `execucao.html` |
+| `/legacy` | `legacy/index.html` |
 
-Assets continuam sendo servidos pelo wildcard existente a partir do diretório compilado; portanto `/catalogo-manual.js` e demais referências conservam sua base previsível. A raiz `/` não é redirecionada.
+O build copia `legacy/` para `dist/legacy`. Não existem rotas de página `/legacy/catalogo`, `/legacy/lives`, `/legacy/blocos` ou `/legacy/execucao`; a raiz e essas páginas atuais não são redirecionadas.
 
 ## Contratos preservados
 
