@@ -76,12 +76,39 @@ export function saveMusicRegistration(db, input) {
     const existing = input.id ? getMusic(db, input.id) : null;
     const id = existing ? input.id : createMusic(db, { id: input.id, artista: input.artista, titulo: input.titulo, generoPrimario: input.genero ?? null, origem: input.origem ?? null, observacoes: input.observacoes ?? null, autoral: input.autoral, ativo: input.ativo });
     if (existing) updateMusic(db, id, { artista: input.artista, titulo: input.titulo, generoPrimario: input.genero ?? null, origem: input.origem ?? null, observacoes: input.observacoes ?? null, autoral: input.autoral, ativo: input.ativo });
+    if ('letraCaminho' in input) updateMusic(db, id, { letra: input.letraCaminho ?? null });
     const versions = [...input.versoes].sort((a, b) => a.ordem - b.ordem);
     if (versions.some((version, index) => version.ordem !== index + 1)) throw new Error('As ordens devem começar em 1 e ser consecutivas');
     if (new Set(versions.map((version) => version.ordem)).size !== versions.length) throw new Error('Ordens duplicadas');
     db.prepare('DELETE FROM fontes_musica WHERE musica_id=?').run(id);
     for (const version of versions) addSource(db, id, { id: version.id, nome: version.nome, tipo: version.tipo, referencia: version.referencia, ordem: version.ordem, duracao: version.duracao ?? null, abertura: version.abertura, principal: version.ordem === 1 });
     return id;
+  });
+}
+export function getMusicRegistrationArtifacts(db, id) {
+  useDrizzleRepository(db);
+  const row = getMusic(db, id);
+  if (!row) return null;
+  const blockLinks = db.prepare('SELECT bloco_id, ordem FROM musicas_do_bloco WHERE musica_id=? ORDER BY bloco_id, ordem').all(id);
+  const liveLinks = db.prepare('SELECT live_id, id AS item_id FROM itens_da_live WHERE musica_id=? ORDER BY live_id, ordem').all(id);
+  const localReferences = row.fontes
+    .filter((source) => source.tipo === 'audio' || source.tipo === 'video')
+    .map((source) => ({ kind: source.tipo, reference: source.referencia }));
+  if (row.letra_caminho) localReferences.push({ kind: 'lyrics', reference: row.letra_caminho });
+  const shared = localReferences.filter(({ reference }) => {
+    if (reference.startsWith('letras/')) return Boolean(db.prepare('SELECT 1 FROM musicas WHERE letra_caminho=? AND id<>?').get(reference, id));
+    return Boolean(db.prepare('SELECT 1 FROM fontes_musica WHERE referencia=? AND musica_id<>? AND tipo IN (\'audio\',\'video\')').get(reference, id));
+  });
+  return { music: row, blockLinks, liveLinks, localReferences, sharedReferences: shared };
+}
+export function removeMusicRegistration(db, id) {
+  const artifacts = getMusicRegistrationArtifacts(db, id);
+  if (!artifacts) return null;
+  return transaction(db, () => {
+    db.prepare('DELETE FROM musicas_do_bloco WHERE musica_id=?').run(id);
+    db.prepare('DELETE FROM fontes_musica WHERE musica_id=?').run(id);
+    db.prepare('DELETE FROM musicas WHERE id=?').run(id);
+    return artifacts;
   });
 }
 export function exportCatalog(db) { return { formato:'live-console.catalogo/v1', exportadoEm:stamp(), musicas:listMusic(db).map(song=>({artista:song.artista,titulo:song.titulo,musicaBase:song.musica_base,status:song.status,observacoes:song.observacoes,generoPrimario:song.genero_primario,generoSecundario:song.genero_secundario,xEmLives:song.x_em_lives,origem:song.origem,autoral:song.autoral,duracao:song.duracao,vibePrincipal:song.vibe_principal,vibeSecundaria:song.vibe_secundaria,temperaturaDePalco:song.temperatura_de_palco,bloco:song.bloco,clima:song.clima,letra:song.letra_caminho,fontes:song.fontes.map(({id,musica_id,criada_em,atualizada_em,...f})=>f)})) }; }
