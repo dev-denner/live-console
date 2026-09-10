@@ -1,6 +1,6 @@
 ---
 name: live-console-aidd
-summary: Adapter for agents using the canonical Live Console AIDD workflow.
+description: Adapter for the canonical Live Console AIDD workflow.
 ---
 
 # Compatibility adapter
