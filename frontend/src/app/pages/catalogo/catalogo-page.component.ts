@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { CatalogoService } from './catalogo.service';
 import { CatalogFilters, CatalogMusic, MusicRegistration, MusicVersionDraft } from './catalogo.models';
 import { ApiError } from '../../core/api/api-error';
@@ -12,12 +12,8 @@ import { RequestState } from '../../core/models/request-state';
 })
 export class CatalogoPageComponent {
   private readonly service = inject(CatalogoService);
-  readonly filters = signal<CatalogFilters>({ autoral: '' });
+  readonly filters = signal<CatalogFilters>({ ativo: '', autoral: '' });
   readonly state = signal<RequestState<CatalogMusic[]>>({ status: 'loading' });
-  private readonly knownSongs = signal<CatalogMusic[]>([]);
-  readonly statuses = computed(() => this.unique(this.knownSongs().map((song) => song.status)));
-  readonly blocks = computed(() => this.unique(this.knownSongs().map((song) => song.bloco)));
-  readonly climates = computed(() => this.unique(this.knownSongs().map((song) => song.clima)));
   readonly registration = signal<MusicRegistration | null>(null);
   readonly versionDraft = signal<MusicVersionDraft | null>(null);
   readonly registrationError = signal<string | null>(null);
@@ -33,7 +29,6 @@ export class CatalogoPageComponent {
     this.state.set({ status: 'loading' });
     this.service.list(this.filters()).subscribe({
       next: ({ musicas }) => {
-        if (this.knownSongs().length === 0 && Object.values(this.filters()).every((value) => !value)) this.knownSongs.set(musicas);
         this.state.set(musicas.length ? { status: 'success', data: musicas } : { status: 'empty' });
       },
       error: (error: ApiError) => this.state.set({ status: 'error', error })
@@ -46,16 +41,15 @@ export class CatalogoPageComponent {
   }
 
   clearFilters(): void {
-    this.filters.set({ autoral: '' });
+    this.filters.set({ ativo: '', autoral: '' });
     this.load();
   }
 
-  source(song: CatalogMusic) { return song.fontes.find((item) => item.principal) ?? song.fontes[0] ?? null; }
-  mediaLabel(song: CatalogMusic): string { return this.source(song)?.tipo ?? 'sem mídia'; }
+  source(song: CatalogMusic) { return song.versoes.find((item) => item.ordem === 1) ?? song.versoes[0] ?? null; }
+  mediaLabel(song: CatalogMusic): string { const type = this.source(song)?.tipo; return type === 'youtube' ? 'YouTube' : type === 'audio' ? 'Áudio' : type === 'video' ? 'Vídeo' : 'Sem mídia'; }
   versionLabel(song: CatalogMusic): string { return this.source(song)?.nome ?? '—'; }
-  private unique(values: Array<string | null>): string[] { return [...new Set(values.filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b)); }
 
-  newMusic(): void { this.registrationError.set(null); this.registration.set({ titulo: '', artista: '', genero: null, origem: null, observacoes: null, autoral: false, ativo: true, xEmLives: 0, letraMarkdown: '', versoes: [] }); setTimeout(() => document.querySelector<HTMLElement>('.music-dialog')?.focus(), 0); }
+  newMusic(): void { this.registrationError.set(null); this.registration.set({ titulo: '', artista: '', genero: null, origem: null, observacoes: null, autoral: false, ativo: true, xEmLives: 0, letraMarkdown: '', versoes: [] }); setTimeout(() => { const dialog = document.querySelector<HTMLElement>('.music-dialog'); if (dialog) { dialog.scrollTop = 0; dialog.focus(); } }, 0); }
   editMusic(song: CatalogMusic): void { this.registrationError.set(null); this.service.getRegistration(song.id).subscribe({ next: (music) => this.registration.set(music), error: (error: ApiError) => this.registrationError.set(error.message) }); }
   closeRegistration(): void { const staged = this.registration()?.versoes.filter((version) => version.stagingId).map((version) => version.stagingId as string) ?? []; staged.forEach((id) => this.service.cancelStaging(id).subscribe()); this.registration.set(null); this.versionDraft.set(null); this.registrationError.set(null); }
   updateRegistration<K extends keyof MusicRegistration>(key: K, value: MusicRegistration[K]): void { this.registration.update((current) => current ? { ...current, [key]: value } : current); }
@@ -71,7 +65,7 @@ export class CatalogoPageComponent {
   }
   openVersion(version?: MusicVersionDraft, trigger?: EventTarget | null): void {
     this.versionError.set(null); this.versionTrigger = trigger instanceof HTMLElement ? trigger : null;
-    this.versionDraft.set(version ? { ...version } : { nome: '', ordem: (this.registration()?.versoes.length ?? 0) + 1, tipo: 'youtube', referencia: '', duracao: null, abertura: false }); setTimeout(() => document.querySelector<HTMLElement>('.version-dialog')?.focus(), 0);
+    this.versionDraft.set(version ? { ...version } : { nome: '', ordem: (this.registration()?.versoes.length ?? 0) + 1, tipo: 'youtube', referencia: '', duracao: null, abertura: false }); setTimeout(() => { const dialog = document.querySelector<HTMLElement>('.version-dialog'); if (dialog) { dialog.scrollTop = 0; dialog.focus(); } }, 0);
   }
   closeVersion(): void { this.versionDraft.set(null); this.versionError.set(null); setTimeout(() => this.versionTrigger?.focus(), 0); }
   updateVersion<K extends keyof MusicVersionDraft>(key: K, value: MusicVersionDraft[K]): void { this.versionDraft.update((current) => current ? { ...current, [key]: value } : current); }

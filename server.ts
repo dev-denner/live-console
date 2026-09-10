@@ -65,6 +65,14 @@ function registrationView(music: any, lyrics: string | null, warning: string | n
       duracao: source.duracao, abertura: source.abertura })) };
 }
 
+function catalogView(music: any) {
+  return { id: music.id, titulo: music.titulo, artista: music.artista, autoral: music.autoral,
+    ativo: music.ativo, xEmLives: music.x_em_lives,
+    versoes: music.fontes.map((source: any) => ({ id: source.id, nome: source.nome, ordem: source.ordem,
+      tipo: source.tipo, referencia: source.tipo === 'youtube' ? source.referencia : mediaUrl(source.referencia),
+      duracao: source.duracao, abertura: source.abertura })) };
+}
+
 function localRegistrationReference(storageRoot: string, type: 'audio' | 'video', reference: string): string {
   const folder = type === 'audio' ? 'musicas' : 'videos';
   const normalized = reference.replace(/\\/g, '/');
@@ -276,6 +284,7 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
       throw error;
     }
   });
+  app.get('/api/v1/musicas', async (request) => ({ musicas: listMusic(database, request.query as Record<string, unknown>).map(catalogView) }));
   app.get('/api/musicas', async (request) => ({ musicas: listMusic(database, request.query as Record<string, unknown>) }));
   app.post('/api/musicas', async (request, reply) => {
     const parsed = musicSchema.safeParse(request.body);

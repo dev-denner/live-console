@@ -11,12 +11,10 @@ export class CatalogoService {
   list(filters: CatalogFilters): Observable<CatalogResponse> {
     const params = new URLSearchParams();
     if (filters.q?.trim()) params.set('q', filters.q.trim());
-    if (filters.status) params.set('status', filters.status);
+    if (filters.ativo !== '' && filters.ativo !== undefined) params.set('ativo', String(filters.ativo));
     if (filters.autoral !== '' && filters.autoral !== undefined) params.set('autoral', String(filters.autoral));
-    if (filters.bloco) params.set('bloco', filters.bloco);
-    if (filters.clima) params.set('clima', filters.clima);
     const query = params.toString();
-    return this.api.get(`/api/musicas${query ? `?${query}` : ''}`, (payload) => {
+    return this.api.get(`/api/v1/musicas${query ? `?${query}` : ''}`, (payload) => {
       if (!payload || typeof payload !== 'object' || !Array.isArray((payload as { musicas?: unknown }).musicas)) {
         throw invalidResponseError('Resposta do catálogo inválida.');
       }
@@ -42,6 +40,7 @@ export class CatalogoService {
     if (!value || typeof value !== 'object') return false;
     const music = value as Partial<CatalogMusic>;
     return typeof music.id === 'string' && typeof music.artista === 'string' && typeof music.titulo === 'string'
-      && typeof music.autoral === 'boolean' && typeof music.x_em_lives === 'number' && Array.isArray(music.fontes);
+      && typeof music.autoral === 'boolean' && typeof music.ativo === 'boolean'
+      && typeof music.xEmLives === 'number' && Array.isArray(music.versoes);
   }
 }

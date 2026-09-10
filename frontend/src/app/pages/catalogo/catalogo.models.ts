@@ -18,21 +18,16 @@ export interface CatalogMusic {
   id: string;
   artista: string;
   titulo: string;
-  status: string | null;
   autoral: boolean;
-  bloco: string | null;
-  clima: string | null;
-  musica_base: string | null;
-  x_em_lives: number;
-  fontes: CatalogSource[];
+  ativo: boolean;
+  xEmLives: number;
+  versoes: MusicVersionDraft[];
 }
 
 export interface CatalogFilters {
   q?: string;
-  status?: string;
+  ativo?: boolean | '';
   autoral?: boolean | '';
-  bloco?: string;
-  clima?: string;
 }
 
 export interface CatalogResponse {
