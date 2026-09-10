@@ -1,17 +1,24 @@
 <div class="app-shell" data-testid="v1-app-shell">
+  <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
   <header class="topbar">
     <a class="brand" routerLink="catalogo" aria-label="Live Console V1, ir para o catálogo">
-      <span class="eyebrow">LIVE CONSOLE · V1</span>
-      <strong>Foundation de aplicação</strong>
+      <span class="brand-mark" aria-hidden="true">LC</span>
+      <span class="brand-copy">
+        <span class="eyebrow">Live Console · V1</span>
+        <strong>O palco antes do ar</strong>
+      </span>
     </a>
-    <a class="legacy-link" href="/legacy">Console v0</a>
+    <a class="legacy-link" href="/legacy"><span>Console legado</span><span aria-hidden="true">↗</span></a>
   </header>
 
-  <nav class="navigation" aria-label="Navegação da V1">
-    @for (item of navigation; track item.path) {
-      <a [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{ item.label }}</a>
-    }
-  </nav>
+  <div class="nav-row">
+    <p class="section-kicker">Navegar</p>
+    <nav class="navigation" aria-label="Navegação da V1">
+      @for (item of navigation; track item.path) {
+        <a [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"><span>{{ item.label }}</span><span class="nav-arrow" aria-hidden="true">→</span></a>
+      }
+    </nav>
+  </div>
 
   <section
     class="health"
@@ -21,6 +28,8 @@
     data-testid="health-state"
   >
     <span class="health-dot" aria-hidden="true"></span>
+    <span class="health-label">Conexão</span>
+    <span class="health-divider" aria-hidden="true"></span>
     @switch (healthState().status) {
       @case ('loading') {
         <span>Verificando conexão com o backend local…</span>
@@ -35,7 +44,7 @@
     }
   </section>
 
-  <main class="content">
+  <main class="content" id="main-content" tabindex="-1">
     <router-outlet />
   </main>
 </div>
