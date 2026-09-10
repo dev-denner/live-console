@@ -26,9 +26,10 @@ export class ApiClientService {
 
   post<T>(url: string, body: unknown, parse?: ResponseParser<T>): Observable<T> { return this.request('post', url, body, parse); }
   put<T>(url: string, body: unknown, parse?: ResponseParser<T>): Observable<T> { return this.request('put', url, body, parse); }
+  patch<T>(url: string, body: unknown, parse?: ResponseParser<T>): Observable<T> { return this.request('patch', url, body, parse); }
   delete<T>(url: string): Observable<T> { return this.http.delete<unknown>(url).pipe(map((payload) => payload as T), catchError((error: unknown) => throwError(() => this.isApiError(error) ? error : normalizeApiError(error)))); }
 
-  private request<T>(method: 'post' | 'put', url: string, body: unknown, parse?: ResponseParser<T>): Observable<T> {
+  private request<T>(method: 'post' | 'put' | 'patch', url: string, body: unknown, parse?: ResponseParser<T>): Observable<T> {
     return this.http.request<unknown>(method, url, { body }).pipe(map((payload) => parse ? parse(payload) : payload as T), catchError((error: unknown) => throwError(() => this.isApiError(error) ? error : normalizeApiError(error))));
   }
 

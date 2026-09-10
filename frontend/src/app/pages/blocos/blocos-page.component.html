@@ -1,0 +1,80 @@
+<section class="blocks-page" data-testid="blocos-page">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Organização do repertório</p>
+      <h1>Blocos</h1>
+      <p class="intro">Monte sequências manuais de músicas-base. A ordem é sua; o sistema apenas preserva e protege as regras.</p>
+    </div>
+    <div class="heading-actions">
+      @if (listState().status === 'success') { <p class="result-count"><strong>{{ listState().data.length }}</strong> {{ listState().data.length === 1 ? 'bloco' : 'blocos' }}</p> }
+      <button class="primary-button" type="button" (click)="newBlock($event)">Novo bloco</button>
+    </div>
+  </header>
+
+  @if (actionError(); as error) { <div class="alert error" role="alert">{{ error }}</div> }
+
+  @switch (listState().status) {
+    @case ('loading') { <div class="blocks-layout" aria-busy="true"><div class="panel skeleton-panel"></div><div class="panel skeleton-panel"></div></div> }
+    @case ('error') { <section class="state-panel" role="alert"><strong>Não foi possível carregar os blocos.</strong><p>{{ listState().error.message }}</p><button type="button" (click)="loadBlocks()">Tentar novamente</button></section> }
+    @case ('empty') { <section class="state-panel empty"><strong>Nenhum bloco cadastrado.</strong><p>Crie o primeiro bloco para organizar a ordem das músicas da sua live.</p><button class="primary-button" type="button" (click)="newBlock($event)">Criar primeiro bloco</button></section> }
+    @case ('success') {
+      <div class="blocks-layout">
+        <aside class="block-list panel" aria-label="Blocos cadastrados">
+          <div class="panel-heading"><div><p class="section-label">Biblioteca</p><h2>Seus blocos</h2></div><span class="limit-badge">até 10</span></div>
+          <div class="block-list-items">
+            @for (block of listState().data; track block.id) {
+              <button class="block-list-item" [class.selected]="selectedId() === block.id" type="button" (click)="select(block.id)">
+                <span class="block-list-copy"><strong>{{ block.nome }}</strong><small>{{ block.quantidadeMusicas }} {{ block.quantidadeMusicas === 1 ? 'música' : 'músicas' }}</small></span>
+                <span aria-hidden="true">→</span>
+              </button>
+            }
+          </div>
+        </aside>
+
+        <section class="block-detail panel" aria-live="polite">
+          @switch (blockState().status) {
+            @case ('loading') { <div class="detail-skeleton"><span></span><span></span><span></span></div> }
+            @case ('error') { <div class="state-panel compact" role="alert"><strong>Não foi possível carregar este bloco.</strong><p>{{ blockState().error.message }}</p><button type="button" (click)="select(selectedId()!)">Tentar novamente</button></div> }
+            @case ('success') {
+              @if (currentBlock(); as block) {
+                <header class="detail-heading"><div><p class="section-label">Bloco selecionado</p><h2>{{ block.nome }}</h2>@if (block.descricao) { <p class="detail-description">{{ block.descricao }}</p> }</div><div class="detail-actions"><button class="secondary-button" type="button" (click)="editBlock(block, $event)">Editar</button><button class="danger-outline" type="button" (click)="requestDelete({ id: block.id, nome: block.nome, descricao: block.descricao, quantidadeMusicas: block.musicas.length, criadaEm: block.criadaEm, atualizadaEm: block.atualizadaEm }, $event)">Excluir</button></div></header>
+                <div class="count-line"><strong>{{ block.musicas.length }}/10</strong><span>músicas-base na ordem da apresentação</span></div>
+                <ol class="music-order">
+                  @for (music of block.musicas; track music.id; let index = $index) {
+                    <li class="music-row" [class.inactive]="!music.ativo"><span class="order-number">{{ index + 1 }}</span><span class="music-copy"><strong>{{ music.titulo }}</strong><small>{{ music.artista }} · {{ music.autoral ? 'Autoral' : 'Capa' }}@if (!music.ativo) { · Inativa }</small></span><span class="row-actions"><button class="icon-action" type="button" [disabled]="busy() || index === 0" [attr.aria-label]="'Mover ' + music.titulo + ' para cima'" (click)="moveMusic(index, -1)">↑</button><button class="icon-action" type="button" [disabled]="busy() || index === block.musicas.length - 1" [attr.aria-label]="'Mover ' + music.titulo + ' para baixo'" (click)="moveMusic(index, 1)">↓</button><button class="remove-action" type="button" [disabled]="busy()" (click)="removeMusic(music.id)">Remover</button></span></li>
+                  } @empty { <li class="empty-inline">Este bloco ainda não tem músicas.</li> }
+                </ol>
+
+                <section class="add-music-section" aria-labelledby="add-music-title">
+                  <div class="section-heading"><div><p class="section-label">Seleção manual</p><h3 id="add-music-title">Adicionar música</h3></div><span class="helper">Música-base, não versão</span></div>
+                  <label class="search-field"><span>Pesquisar catálogo</span><input type="search" [value]="search()" placeholder="Título ou artista…" (input)="updateSearch($any($event.target).value)"></label>
+                  @switch (optionsState().status) {
+                    @case ('loading') { <p class="muted-state">Consultando catálogo…</p> }
+                    @case ('error') { <p class="inline-error" role="alert">{{ optionsState().error.message }}</p> }
+                    @case ('empty') { <p class="muted-state">Nenhuma música encontrada.</p> }
+                    @case ('success') {
+                      <ul class="option-list">
+                        @for (option of optionsState().data; track option.id) {
+                          <li class="option-row" [class.unavailable]="!option.disponivel"><span class="music-copy"><strong>{{ option.titulo }}</strong><small>{{ option.artista }} · {{ typeLabel(option) }}</small></span><span class="option-status">@if (option.motivo) { <span>{{ option.motivo }}</span> } @else { <span class="available-label">Disponível</span> }</span><button class="secondary-button add-button" type="button" [disabled]="!canAdd(option)" (click)="addMusic(option)">@if (option.motivo === 'Já está neste bloco') { Já adicionada } @else { Adicionar }</button></li>
+                        }
+                      </ul>
+                    }
+                  }
+                </section>
+              }
+            }
+            @default { <div class="state-panel compact"><strong>Selecione um bloco.</strong></div> }
+          }
+        </section>
+      </div>
+    }
+  }
+
+  @if (draft(); as current) {
+    <div class="dialog-backdrop" role="presentation"><section class="block-dialog" role="dialog" aria-modal="true" aria-labelledby="block-dialog-title" tabindex="-1"><header class="dialog-header"><div><p class="eyebrow">Configuração do bloco</p><h2 id="block-dialog-title">{{ current.id ? 'Editar bloco' : 'Novo bloco' }}</h2></div><button class="icon-button" type="button" aria-label="Fechar" (click)="closeDraft()">×</button></header><label><span>Nome *</span><input [value]="current.nome" (input)="updateDraft('nome', $any($event.target).value)" autofocus></label><label><span>Descrição opcional</span><textarea rows="3" [value]="current.descricao ?? ''" (input)="updateDraft('descricao', $any($event.target).value || null)"></textarea></label><p class="dialog-helper">O bloco aceita no máximo 10 músicas. A música-base só pode pertencer a um bloco.</p><footer class="dialog-footer"><button class="secondary-button" type="button" (click)="closeDraft()">Cancelar</button><button class="primary-button" type="button" [disabled]="busy()" (click)="saveBlock()">Salvar bloco</button></footer></section></div>
+  }
+
+  @if (deleteCandidate(); as candidate) {
+    <div class="dialog-backdrop" role="presentation"><section class="block-dialog delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-block-title" tabindex="-1"><header class="dialog-header"><div><p class="eyebrow">Exclusão</p><h2 id="delete-block-title">Excluir {{ candidate.nome }}?</h2></div><button class="icon-button" type="button" aria-label="Cancelar exclusão" (click)="cancelDelete()">×</button></header><p>O bloco e seus vínculos serão removidos. As músicas e seus arquivos continuarão no catálogo.</p><footer class="dialog-footer"><button class="secondary-button" type="button" (click)="cancelDelete()">Cancelar</button><button class="danger-button" type="button" [disabled]="busy()" (click)="confirmDelete()">Confirmar exclusão</button></footer></section></div>
+  }
+</section>

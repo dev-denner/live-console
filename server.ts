@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import {
   addSource, createMusic, exportCatalog, getMusic,
   listMusic, openDatabase, removeMusic, removeSource, reorderSources, setLyrics,
-  setPrimarySource, updateMusic, updateSource, createLive, getLive, listLives, updateLive, removeLive, addLiveItem, updateLiveItem, removeLiveItem, reorderLiveItems, exportLegacyLive, listBlocks, getBlock, createBlock, updateBlock, removeBlock, addBlockMusic, removeBlockMusic, reorderBlockMusic, addBlockToLive, previewMontagem, confirmMontagem, getMontagem, startExecution, changeExecution, endExecution, executionHistory, getMusicRegistrationArtifacts, removeMusicRegistration
+  setPrimarySource, updateMusic, updateSource, createLive, getLive, listLives, updateLive, removeLive, addLiveItem, updateLiveItem, removeLiveItem, reorderLiveItems, exportLegacyLive, listBlocks, getBlock, createBlock, updateBlock, removeBlock, addBlockMusic, removeBlockMusic, reorderBlockMusic, listBlockMusicOptions, addBlockToLive, previewMontagem, confirmMontagem, getMontagem, startExecution, changeExecution, endExecution, executionHistory, getMusicRegistrationArtifacts, removeMusicRegistration
 } from './src/db/repositories.js';
 import { confirmImport, inspectImport } from './src/importer.mjs';
 import { musicPatchSchema, musicSchema, sourceSchema, blocoSchema, blocoPatchSchema, blocoMusicSchema, orderSchema, montagemSchema, execucaoActionSchema, idempotencySchema, musicRegistrationSchema, messageForValidation } from './src/contracts.js';
@@ -71,6 +71,22 @@ function catalogView(music: any) {
     versoes: music.fontes.map((source: any) => ({ id: source.id, nome: source.nome, ordem: source.ordem,
       tipo: source.tipo, referencia: source.tipo === 'youtube' ? source.referencia : mediaUrl(source.referencia),
       duracao: source.duracao, abertura: source.abertura })) };
+}
+
+function blockSummaryView(block: any) {
+  return { id: block.id, nome: block.nome, descricao: block.descricao, quantidadeMusicas: Number(block.quantidade_musicas ?? 0), criadaEm: block.criada_em, atualizadaEm: block.atualizada_em };
+}
+
+function blockMusicView(song: any) {
+  return { id: song.id, titulo: song.titulo, artista: song.artista, ativo: song.ativo, autoral: song.autoral, xEmLives: song.x_em_lives, ordem: Number(song.ordem), fontes: song.fontes?.map((source: any) => ({ tipo: source.tipo, nome: source.nome, principal: source.principal })) ?? [] };
+}
+
+function blockView(block: any) {
+  return { id: block.id, nome: block.nome, descricao: block.descricao, criadaEm: block.criada_em, atualizadaEm: block.atualizada_em, musicas: block.musicas.map(blockMusicView) };
+}
+
+function blockMusicOptionView(option: any) {
+  return { id: option.id, titulo: option.titulo, artista: option.artista, ativo: option.ativo, autoral: option.autoral, xEmLives: option.x_em_lives, disponivel: option.disponivel, blocoAtualId: option.blocoAtualId, blocoAtualNome: option.blocoAtualNome, motivo: option.motivo };
 }
 
 function localRegistrationReference(storageRoot: string, type: 'audio' | 'video', reference: string): string {
@@ -370,6 +386,15 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
   app.post('/api/blocos/:id/musicas', async (request,reply) => {const parsed=blocoMusicSchema.safeParse(request.body);if(!parsed.success)throw badRequest(messageForValidation(parsed.error));try{const bloco=addBlockMusic(database,(request.params as {id:string}).id,parsed.data.musicaId);reply.code(201);return {bloco};}catch(error){const message=(error as Error).message;return reply.code(message.includes('já pertence')?409:404).send({error:message});}});
   app.delete('/api/blocos/:id/musicas/:musicaId', async (request,reply) => removeBlockMusic(database,(request.params as {id:string}).id,(request.params as {musicaId:string}).musicaId)?reply.code(204).send():reply.code(404).send({error:'Não encontrado'}));
   app.put('/api/blocos/:id/musicas/ordem', async (request,reply) => {const parsed=orderSchema.safeParse(request.body);if(!parsed.success)throw badRequest(messageForValidation(parsed.error));try{return {musicas:reorderBlockMusic(database,(request.params as {id:string}).id,parsed.data.ids)};}catch(error){return reply.code(400).send({error:(error as Error).message});}});
+  app.get('/api/v1/blocos', async () => ({ blocos: listBlocks(database).map(blockSummaryView) }));
+  app.post('/api/v1/blocos', async (request, reply) => { const parsed=blocoSchema.safeParse(request.body); if(!parsed.success) throw badRequest(messageForValidation(parsed.error)); const id=createBlock(database,parsed.data); reply.code(201); return { bloco:blockView(getBlock(database,id)) }; });
+  app.get('/api/v1/blocos/:id', async (request, reply) => { const block=getBlock(database,(request.params as {id:string}).id); return block ? { bloco:blockView(block) } : reply.code(404).send({error:'Bloco não encontrado'}); });
+  app.patch('/api/v1/blocos/:id', async (request, reply) => { const parsed=blocoPatchSchema.safeParse(request.body); if(!parsed.success) throw badRequest(messageForValidation(parsed.error)); const block=updateBlock(database,(request.params as {id:string}).id,parsed.data); return block ? { bloco:blockView(block) } : reply.code(404).send({error:'Bloco não encontrado'}); });
+  app.delete('/api/v1/blocos/:id', async (request, reply) => removeBlock(database,(request.params as {id:string}).id) ? reply.code(204).send() : reply.code(404).send({error:'Bloco não encontrado'}));
+  app.get('/api/v1/blocos/:id/opcoes-musicas', async (request, reply) => { const params=request.params as {id:string}; const query=request.query as {q?:string}; const options=listBlockMusicOptions(database,params.id,query.q ?? ''); return options ? { musicas:options.map(blockMusicOptionView) } : reply.code(404).send({error:'Bloco não encontrado'}); });
+  app.post('/api/v1/blocos/:id/musicas', async (request, reply) => { const parsed=blocoMusicSchema.safeParse(request.body); if(!parsed.success) throw badRequest(messageForValidation(parsed.error)); try { const block=addBlockMusic(database,(request.params as {id:string}).id,parsed.data.musicaId); reply.code(201); return { bloco:blockView(block) }; } catch(error) { const message=(error as Error).message; const status=message.includes('não encontrado') ? 404 : 409; return reply.code(status).send({error:message}); } });
+  app.delete('/api/v1/blocos/:id/musicas/:musicaId', async (request, reply) => removeBlockMusic(database,(request.params as {id:string}).id,(request.params as {musicaId:string}).musicaId) ? reply.code(204).send() : reply.code(404).send({error:'Vínculo não encontrado'}));
+  app.put('/api/v1/blocos/:id/musicas/ordem', async (request, reply) => { const parsed=orderSchema.safeParse(request.body); if(!parsed.success) throw badRequest(messageForValidation(parsed.error)); try { return { musicas:reorderBlockMusic(database,(request.params as {id:string}).id,parsed.data.ids).map(blockMusicView) }; } catch(error) { return reply.code(400).send({error:(error as Error).message}); } });
   app.get('/api/lives', async () => ({ lives: listLives(database) }));
   app.post('/api/lives', async (request, reply) => { const parsed=liveSchema.safeParse(request.body);if(!parsed.success)throw badRequest(messageForValidation(parsed.error)); const id=createLive(database,parsed.data);reply.code(201);return {live:getLive(database,id)}; });
   app.get('/api/lives/:id', async (request, reply) => { const live=getLive(database,(request.params as {id:string}).id);return live?{live}:reply.code(404).send({error:'Não encontrada'}); });
