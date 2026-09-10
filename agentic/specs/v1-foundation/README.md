@@ -7,7 +7,7 @@ Estabelecer a base para a reconstrução do Live Console sem perder o comportame
 ## Guardrails
 
 - A rota `/legacy` continua sendo o contrato operacional do v0 até a substituição equivalente ser validada no navegador.
-- A fundação não remodela o catálogo, não migra repertórios pessoais e não cria novas regras de montagem.
+- A fundação não remodela o catálogo, não migra repertórios pessoais e não cria novas regras de montagem sem spec aprovada.
 - O backend permanece local, em TypeScript/Fastify, com SQLite e repositórios Drizzle.
 - O frontend v1 será Angular standalone com TypeScript strict, Signals e NgRx SignalStore quando houver estado compartilhado de feature.
 - Migrações SQL existentes continuam sob o executor atual; não usar drizzle-kit, push, reset ou baseline paralelo.
@@ -35,13 +35,17 @@ Materializar a convenção de Signals/NgRx SignalStore por feature, estados de l
 
 Implementar uma única página v1 escolhida por uma spec própria, provavelmente catálogo/listagem. A página deve provar leitura de API, estado, erro, vazio e navegação no navegador antes de ampliar o escopo.
 
+### F5 — Cadastro de músicas, letras e versões
+
+Implementar a criação e edição do agregado de música: diálogo pai para metadados e letra Markdown, diálogo filho de aproximadamente 75% para versões ordenadas e upload local seguro. O fluxo permanece em rascunho até o salvamento final; mídia é servida ao navegador por HTTP. Clima, vibe, temperatura de palco e bloco ficam fora deste cadastro; geração automática continua fora de escopo.
+
 ## Gate de saída da foundation
 
 A foundation só termina quando:
 
 - v0 é acessível em `/legacy` e sua jornada principal tem evidência browser;
 - Angular inicia em uma superfície v1 separada;
-- Fastify expõe contratos tipados para a primeira feature;
+- Fastify expõe contratos tipados para as features aprovadas;
 - nenhum dado pessoal, mídia, SQLite, export ou segredo é versionado;
 - as regras de persistência, compatibilidade e `xEmLives` continuam cobertas;
 - há PRs e evidências associadas às fases concluídas.
