@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "live-console",
+  "name": "Live Console",
+  "category": "Operational music console",
+  "description": "A low-light stage console for preparing and conducting live music presentations.",
+  "source": {
+    "type": "local",
+    "origin": "Live Console V1 visual system"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css"
+  }
+}

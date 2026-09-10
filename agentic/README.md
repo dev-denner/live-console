@@ -25,6 +25,7 @@ agentic/
   specs/                 # PRDs, specs técnicas e evidências por feature
     v0.1/                # material histórico preservado
     v1-foundation/       # primeira spec da reconstrução
+design-systems/          # contratos visuais locais consumíveis por agentes
 ```
 
 ## Princípios
@@ -42,3 +43,5 @@ agentic/
 O material histórico permanece em `specs/v0.1/`. A reconstrução usa `skills/aidd-feature`, `skills/live-console-domain`, `rules/live-console-v1.md` e specs em `specs/v1-foundation/`.
 
 Durante a foundation, v0 ficará acessível em `/legacy`. V1 será especificada e validada página a página antes de substituir qualquer fluxo operacional.
+
+O pacote OpenDesign local em `design-systems/live-console/` formaliza a linguagem visual da V1. Ele orienta propostas e componentes, mas não substitui specs, regras de domínio ou revisão humana.
