@@ -36,6 +36,19 @@ export const musicPatchSchema = musicSchema.partial().omit({ id: true, fontes: t
 export type MusicInput = z.infer<typeof musicSchema>;
 export type MusicPatch = z.infer<typeof musicPatchSchema>;
 export type SourceInput = z.infer<typeof sourceSchema>;
+export const musicRegistrationVersionSchema = z.object({
+  id: z.string().uuid().optional(), nome: z.string().trim().min(1), ordem: z.number().int().positive(),
+  tipo: z.enum(['youtube', 'audio', 'video']), referencia: z.string().min(1), stagingId: z.string().uuid().optional(),
+  duracao: z.number().int().nonnegative().nullable().optional(), abertura: z.boolean().default(false)
+}).strict();
+export const musicRegistrationSchema = z.object({
+  id: z.string().uuid().optional(), titulo: z.string().trim().min(1), artista: z.string().trim().min(1),
+  genero: z.string().trim().nullable().optional(), origem: z.string().trim().nullable().optional(),
+  observacoes: z.string().nullable().optional(), autoral: z.boolean().default(false), ativo: z.boolean().default(true),
+  letraMarkdown: z.string().nullable().optional(), letraCaminho: z.string().nullable().optional(),
+  versoes: z.array(musicRegistrationVersionSchema).default([])
+}).strict();
+export type MusicRegistrationInput = z.infer<typeof musicRegistrationSchema>;
 export const blocoSchema=z.object({id:z.string().uuid().optional(),nome:z.string().trim().min(1),descricao:z.string().nullable().optional()}).strict();
 export const blocoPatchSchema=blocoSchema.partial().omit({id:true});
 export const blocoMusicSchema=z.object({musicaId:z.string().uuid()}).strict();

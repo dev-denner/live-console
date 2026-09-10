@@ -5,7 +5,7 @@
       <h1 id="catalog-title">Catálogo</h1>
       <p class="intro">Encontre rapidamente a música certa para preparar a próxima live.</p>
     </div>
-    @if (state().status === 'success') { <p class="result-count" data-testid="result-count"><strong>{{ state().data.length }}</strong> músicas encontradas</p> }
+    <div class="heading-actions"><button class="primary-button" type="button" (click)="newMusic()">Nova música</button>@if (state().status === 'success') { <p class="result-count" data-testid="result-count"><strong>{{ state().data.length }}</strong> músicas encontradas</p> }</div>
   </div>
 
   <form class="filters" aria-label="Filtros do catálogo" (submit)="$event.preventDefault(); load()">
@@ -21,6 +21,44 @@
     @case ('loading') { <div class="catalog-table skeleton" data-testid="catalog-loading" aria-label="Carregando catálogo" aria-busy="true">@for (row of [1,2,3,4,5]; track row) { <div class="skeleton-row"><i></i><i></i><i></i><i></i></div> }</div> }
     @case ('error') { <div class="state-panel error-panel" data-testid="catalog-error" role="alert"><span class="state-mark">!</span><div><h2>Não foi possível carregar o catálogo</h2><p>{{ state().error.message }}</p></div><button type="button" (click)="load()">Tentar novamente</button></div> }
     @case ('empty') { <div class="state-panel" data-testid="catalog-empty"><span class="state-mark">∅</span><div><h2>Nenhuma música encontrada</h2><p>Ajuste os filtros ou limpe a pesquisa para consultar todo o catálogo.</p></div><button type="button" (click)="clearFilters()">Limpar filtros</button></div> }
-    @case ('success') { <div class="catalog-table" data-testid="catalog-success" aria-live="polite"><table><thead><tr class="table-head"><th scope="col">Música</th><th scope="col">Status</th><th scope="col">Mídia / versão</th><th scope="col">Base</th><th scope="col">xEmLives</th></tr></thead><tbody>@for (song of state().data; track song.id) { <tr class="song-row"><td class="song-title"><strong>{{ song.titulo }}</strong><span>{{ song.artista }}</span></td><td><span class="status" [class.status-ok]="song.status === 'OK'">{{ song.status || 'sem status' }}</span></td><td><b class="media-type">{{ mediaLabel(song) }}</b><small>{{ versionLabel(song) }}</small></td><td class="base">{{ song.musica_base || '—' }}</td><td class="plays">{{ song.x_em_lives }}</td></tr> }</tbody></table></div> }
+    @case ('success') { <div class="catalog-table" data-testid="catalog-success" aria-live="polite"><table><thead><tr class="table-head"><th scope="col">Música</th><th scope="col">Status</th><th scope="col">Mídia / versão</th><th scope="col">Base</th><th scope="col">xEmLives</th><th scope="col">Ação</th></tr></thead><tbody>@for (song of state().data; track song.id) { <tr class="song-row"><td class="song-title"><strong>{{ song.titulo }}</strong><span>{{ song.artista }}</span></td><td><span class="status" [class.status-ok]="song.status === 'OK'">{{ song.status || 'sem status' }}</span></td><td><b class="media-type">{{ mediaLabel(song) }}</b><small>{{ versionLabel(song) }}</small></td><td class="base">{{ song.musica_base || '—' }}</td><td class="plays">{{ song.x_em_lives }}</td><td><button class="table-action" type="button" (click)="editMusic(song)">Editar</button></td></tr> }</tbody></table></div> }
   }
 </section>
+
+@if (registration(); as music) {
+  <div class="dialog-backdrop" role="presentation" (click)="$event.target === $event.currentTarget && closeRegistration()">
+    <section class="music-dialog" role="dialog" aria-modal="true" aria-labelledby="music-dialog-title" tabindex="-1" (keydown.escape)="closeRegistration()">
+      <header class="dialog-header"><div><p class="eyebrow">Rascunho V1</p><h2 id="music-dialog-title">{{ music.id ? 'Editar música' : 'Nova música' }}</h2></div><button class="icon-button" type="button" aria-label="Fechar" (click)="closeRegistration()">×</button></header>
+      <div class="dialog-grid">
+        <div class="music-fields">
+          <label><span>Título *</span><input [value]="music.titulo" (input)="updateRegistration('titulo', $any($event.target).value)" autocomplete="off"></label>
+          <label><span>Artista *</span><input [value]="music.artista" (input)="updateRegistration('artista', $any($event.target).value)" autocomplete="off"></label>
+          <label><span>Gênero / estilo</span><input [value]="music.genero ?? ''" (input)="updateRegistration('genero', $any($event.target).value || null)"></label>
+          <label><span>Origem</span><input [value]="music.origem ?? ''" (input)="updateRegistration('origem', $any($event.target).value || null)"></label>
+          <label><span>Observações</span><textarea rows="3" [value]="music.observacoes ?? ''" (input)="updateRegistration('observacoes', $any($event.target).value || null)"></textarea></label>
+          <label class="check-row"><input type="checkbox" [checked]="music.autoral" (change)="updateRegistration('autoral', $any($event.target).checked)"><span>Autoral</span></label>
+          <label class="check-row"><input type="checkbox" [checked]="music.ativo" (change)="updateRegistration('ativo', $any($event.target).checked)"><span>Ativa para futuras seleções</span></label>
+          <p class="readonly">xEmLives <strong>{{ music.xEmLives }}</strong> <small>somente leitura</small></p>
+        </div>
+        <label class="lyrics-field"><span>Letra Markdown</span><textarea rows="18" [value]="music.letraMarkdown ?? ''" (input)="updateRegistration('letraMarkdown', $any($event.target).value)"></textarea>@if (music.letraAviso) { <small class="warning" role="alert">{{ music.letraAviso }}</small> }</label>
+      </div>
+      <section class="versions"><div class="section-title"><div><p class="eyebrow">Playback</p><h3>Versões</h3></div><button class="secondary-button" type="button" (click)="openVersion(undefined, $event.target)">Adicionar versão</button></div>@if (!music.versoes.length) { <p class="empty-version">Nenhuma versão cadastrada.</p> } @for (version of music.versoes; track version.id ?? version.ordem) { <div class="version-row"><span class="order">{{ version.ordem }}</span><div><strong>{{ version.nome }}</strong><small>{{ version.tipo }} · {{ version.referencia }} @if (version.abertura) { · abertura }</small></div>@if (version.ordem === 1) { <em>principal</em> }<button class="table-action" type="button" (click)="openVersion(version, $event.target)">Editar</button><button class="table-action danger-text" type="button" (click)="removeVersion(version)">Remover</button></div> }</section>
+      @if (registrationError()) { <p class="dialog-error" role="alert">{{ registrationError() }}</p> }
+      <footer class="dialog-footer"><button class="secondary-button" type="button" (click)="closeRegistration()">Cancelar</button><button class="primary-button" type="button" (click)="saveRegistration()">Salvar</button></footer>
+    </section>
+  </div>
+}
+@if (versionDraft(); as version) {
+  <div class="dialog-backdrop child-backdrop" role="presentation">
+    <section class="version-dialog" role="dialog" aria-modal="true" aria-labelledby="version-dialog-title" tabindex="-1" (keydown.escape)="closeVersion()">
+      <header class="dialog-header"><div><p class="eyebrow">Versão da música</p><h2 id="version-dialog-title">{{ version.id ? 'Editar versão' : 'Adicionar versão' }}</h2></div><button class="icon-button" type="button" aria-label="Fechar versão" (click)="closeVersion()">×</button></header>
+      <label><span>Nome *</span><input [value]="version.nome" (input)="updateVersion('nome', $any($event.target).value)"></label>
+      <div class="two-fields"><label><span>Ordem *</span><input type="number" min="1" [value]="version.ordem" (input)="updateVersion('ordem', +$any($event.target).value)"></label><label><span>Tipo</span><select [value]="version.tipo" (change)="updateVersion('tipo', $any($event.target).value)"><option value="youtube">YouTube</option><option value="audio">Áudio</option><option value="video">Vídeo</option></select></label></div>
+      <label><span>Referência literal / arquivo *</span><input [value]="version.referencia" (input)="updateVersion('referencia', $any($event.target).value)" [readonly]="version.tipo !== 'youtube' && !!version.stagingId"><input class="file-input" type="file" [accept]="version.tipo === 'audio' ? 'audio/*' : version.tipo === 'video' ? 'video/*' : ''" [disabled]="version.tipo === 'youtube'" (change)="uploadVersion($event)"></label>
+      @if (uploadState()) { <p class="upload-note" aria-live="polite">{{ uploadState() }}</p> }
+      <div class="two-fields"><label><span>Duração (segundos)</span><input type="number" min="0" [value]="version.duracao ?? ''" (input)="updateVersion('duracao', $any($event.target).value === '' ? null : +$any($event.target).value)"></label><label class="check-row version-check"><input type="checkbox" [checked]="version.abertura" (change)="updateVersion('abertura', $any($event.target).checked)"><span>Abertura</span></label></div>
+      @if (versionError()) { <p class="dialog-error" role="alert">{{ versionError() }}</p> }
+      <footer class="dialog-footer"><button class="secondary-button" type="button" (click)="closeVersion()">Cancelar</button><button class="primary-button" type="button" (click)="commitVersion()">Usar versão</button></footer>
+    </section>
+  </div>
+}

@@ -3,7 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 import multipart from '@fastify/multipart';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { readFile, mkdir, writeFile, unlink } from 'node:fs/promises';
+import { readFile, mkdir, writeFile, unlink, rename, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { basename, dirname, extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,7 +13,8 @@ import {
   setPrimarySource, updateMusic, updateSource, createLive, getLive, listLives, updateLive, removeLive, addLiveItem, updateLiveItem, removeLiveItem, reorderLiveItems, exportLegacyLive, listBlocks, getBlock, createBlock, updateBlock, removeBlock, addBlockMusic, removeBlockMusic, reorderBlockMusic, addBlockToLive, previewMontagem, confirmMontagem, getMontagem, startExecution, changeExecution, endExecution, executionHistory
 } from './src/db/repositories.js';
 import { confirmImport, inspectImport } from './src/importer.mjs';
-import { musicPatchSchema, musicSchema, sourceSchema, blocoSchema, blocoPatchSchema, blocoMusicSchema, orderSchema, montagemSchema, execucaoActionSchema, idempotencySchema, messageForValidation } from './src/contracts.js';
+import { musicPatchSchema, musicSchema, sourceSchema, blocoSchema, blocoPatchSchema, blocoMusicSchema, orderSchema, montagemSchema, execucaoActionSchema, idempotencySchema, musicRegistrationSchema, messageForValidation } from './src/contracts.js';
+import { saveMusicRegistration } from './src/db/repositories.js';
 import { z } from 'zod';
 
 const appRoot = fileURLToPath(new URL('.', import.meta.url));
@@ -35,6 +36,7 @@ const uploadExtensions: Record<string, ReadonlySet<string>> = {
   video: new Set(['.mp4', '.mov', '.mkv', '.webm']),
   letras: new Set(['.txt', '.md'])
 };
+const registrationUploadExtensions: Record<string, ReadonlySet<string>> = { audio: uploadExtensions.audio ?? new Set(), video: uploadExtensions.video ?? new Set() };
 
 function isInside(parent: string, child: string): boolean {
   const relative = resolve(child).slice(resolve(parent).length);
@@ -43,6 +45,24 @@ function isInside(parent: string, child: string): boolean {
 
 function badRequest(message: string): Error & { statusCode: number } {
   return Object.assign(new Error(message), { statusCode: 400 });
+}
+
+function conflict(message: string): Error & { statusCode: number } { return Object.assign(new Error(message), { statusCode: 409 }); }
+function mediaRelativePath(kind: 'audio' | 'video', filename: string): string { return `${kind === 'audio' ? 'musicas' : 'videos'}/${filename}`; }
+function mediaUrl(relative: string): string { const [folder, ...rest] = relative.replace(/\\/g, '/').split('/'); return folder && rest.length ? `/media/${folder}/${rest.join('/')}` : relative; }
+function lyricsRelativePath(path: string | null | undefined): string | null {
+  if (path === null || path === undefined) return null;
+  const normalized = path.replace(/\\/g, '/');
+  if (!normalized.startsWith('letras/') || normalized.includes('..') || normalized.startsWith('/') || normalized.includes(':')) throw badRequest('Caminho de letra inválido');
+  return normalized;
+}
+function registrationView(music: any, lyrics: string | null, warning: string | null) {
+  return { id: music.id, titulo: music.titulo, artista: music.artista, genero: music.genero_primario, origem: music.origem,
+    observacoes: music.observacoes, autoral: music.autoral, ativo: music.ativo, xEmLives: music.x_em_lives,
+    letraCaminho: music.letra_caminho, letraMarkdown: lyrics, letraAviso: warning,
+    versoes: music.fontes.map((source: any) => ({ id: source.id, nome: source.nome, ordem: source.ordem, tipo: source.tipo,
+      referencia: source.tipo === 'youtube' ? source.referencia : mediaUrl(source.referencia), referenciaRelativa: source.referencia,
+      duracao: source.duracao, abertura: source.abertura })) };
 }
 
 function sourceFileForLegacyReference(reference: string): string {
@@ -95,6 +115,90 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
   });
 
   app.get('/api/health', async () => ({ ok: true }));
+  app.post('/api/media/staging', async (request, reply) => {
+    const kind = String((request.query as { kind?: string }).kind ?? '');
+    const accepted = registrationUploadExtensions[kind];
+    if (!accepted) throw badRequest('Tipo de mídia inválido');
+    const file = await request.file();
+    if (!file) throw badRequest('Arquivo ausente');
+    const extension = extname(basename(file.filename)).toLowerCase();
+    if (!accepted.has(extension)) throw badRequest('Extensão não permitida');
+    const stagingId = randomUUID();
+    const stagingDirectory = join(storageRoot, '.staging');
+    await mkdir(stagingDirectory, { recursive: true });
+    await writeFile(join(stagingDirectory, `${stagingId}${extension}`), await file.toBuffer(), { flag: 'wx' });
+    reply.code(201);
+    return { stagingId, originalName: basename(file.filename), type: kind, size: Number(file.file.bytesRead) };
+  });
+  app.delete('/api/media/staging/:stagingId', async (request, reply) => {
+    const stagingId = (request.params as { stagingId: string }).stagingId;
+    if (!z.string().uuid().safeParse(stagingId).success) throw badRequest('Staging inválido');
+    for (const extension of [...(registrationUploadExtensions.audio ?? new Set()), ...(registrationUploadExtensions.video ?? new Set())]) await unlink(join(storageRoot, '.staging', `${stagingId}${extension}`)).catch(() => undefined);
+    return reply.code(204).send();
+  });
+  app.get('/media/:kind/*', async (request, reply) => {
+    const params = request.params as { kind: string; '*': string };
+    if (!['musicas', 'videos'].includes(params.kind)) return reply.code(404).send({ error: 'Mídia não encontrada' });
+    const file = resolve(storageRoot, params.kind, params['*']);
+    if (!isInside(join(storageRoot, params.kind), file) || !existsSync(file)) return reply.code(404).send({ error: 'Mídia não encontrada' });
+    return reply.header('Cache-Control', 'no-store').type(staticTypes[extname(file).toLowerCase()] ?? 'application/octet-stream').send(await readFile(file));
+  });
+  app.get('/api/v1/musicas/:id', async (request, reply) => {
+    const id = (request.params as { id: string }).id;
+    const music = getMusic(database, id);
+    if (!music) return reply.code(404).send({ error: 'Não encontrada' });
+    let lyrics: string | null = null; let warning: string | null = null;
+    if (music.letra_caminho) { try { lyrics = await readFile(join(storageRoot, music.letra_caminho), 'utf8'); } catch { warning = 'A letra registrada não foi encontrada. Você pode recriá-la ao salvar.'; } }
+    return { musica: registrationView(music, lyrics, warning) };
+  });
+  app.post('/api/v1/musicas', async (request, reply) => {
+    const parsed = musicRegistrationSchema.safeParse(request.body);
+    if (!parsed.success) throw badRequest(messageForValidation(parsed.error));
+    const id = parsed.data.id ?? randomUUID();
+    const requestedLyricsPath = lyricsRelativePath(parsed.data.letraCaminho);
+    const versions = parsed.data.versoes.map((version) => ({ ...version, id: version.id ?? randomUUID() }));
+    const promoted: string[] = [];
+    try {
+      const finalizedVersions = [];
+      for (const version of versions) {
+        let reference = version.referencia;
+        if (version.stagingId) {
+          const extension = [...(registrationUploadExtensions[version.tipo] ?? [])].find((candidate) => existsSync(join(storageRoot, '.staging', `${version.stagingId}${candidate}`)));
+          if (!extension) throw badRequest('Upload staged não encontrado');
+          const folder = version.tipo === 'audio' ? 'musicas' : 'videos';
+          const filename = `${id}-${version.id}${extension}`;
+          const target = join(storageRoot, folder, filename);
+          if (existsSync(target)) throw conflict('Colisão de arquivo: o destino já existe');
+          await mkdir(dirname(target), { recursive: true });
+          await rename(join(storageRoot, '.staging', `${version.stagingId}${extension}`), target);
+          promoted.push(target); reference = `${folder}/${filename}`;
+        }
+        finalizedVersions.push({ ...version, referencia: reference });
+      }
+      const savedId = saveMusicRegistration(database, { ...parsed.data, id, versoes: finalizedVersions });
+      const lyricsPath = parsed.data.letraMarkdown !== undefined && parsed.data.letraMarkdown !== null ? (requestedLyricsPath ?? `letras/${id}.md`) : requestedLyricsPath;
+      if (parsed.data.letraMarkdown !== undefined && parsed.data.letraMarkdown !== null && lyricsPath) {
+        const target = join(storageRoot, lyricsPath); await mkdir(dirname(target), { recursive: true });
+        const temporary = `${target}.${randomUUID()}.tmp`; await writeFile(temporary, parsed.data.letraMarkdown, 'utf8'); await rename(temporary, target);
+        updateMusic(database, savedId, { letra: lyricsPath });
+      }
+      return reply.code(201).send({ musica: registrationView(getMusic(database, savedId), parsed.data.letraMarkdown ?? null, null) });
+    } catch (error) {
+      for (const path of promoted) await unlink(path).catch(() => undefined);
+      if (!parsed.data.id) removeMusic(database, id);
+      if ((error as Error).message === 'Ordens duplicadas' || (error as Error).message.includes('ordens devem')) return reply.code(400).send({ error: (error as Error).message });
+      throw error;
+    } finally {
+      if (parsed.data.versoes) for (const version of parsed.data.versoes) if (version.stagingId) for (const extension of [...(registrationUploadExtensions.audio ?? new Set()), ...(registrationUploadExtensions.video ?? new Set())]) await unlink(join(storageRoot, '.staging', `${version.stagingId}${extension}`)).catch(() => undefined);
+    }
+  });
+  app.put('/api/v1/musicas/:id', async (request, reply) => {
+    const id = (request.params as { id: string }).id;
+    const parsed = musicRegistrationSchema.safeParse({ ...(request.body as object), id });
+    if (!parsed.success) throw badRequest(messageForValidation(parsed.error));
+    const result = await app.inject({ method: 'POST', url: '/api/v1/musicas', payload: parsed.data });
+    reply.code(result.statusCode === 201 ? 200 : result.statusCode).send(result.json());
+  });
   app.get('/api/musicas', async (request) => ({ musicas: listMusic(database, request.query as Record<string, unknown>) }));
   app.post('/api/musicas', async (request, reply) => {
     const parsed = musicSchema.safeParse(request.body);
