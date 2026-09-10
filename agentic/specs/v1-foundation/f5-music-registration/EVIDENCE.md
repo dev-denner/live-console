@@ -57,6 +57,6 @@ Status: implementation validated locally; PR remains unmerged and browser eviden
 
 ### Delivery
 
-- Commit: pending.
-- Branch: `master` (no feature branch or remote publication was requested/executed).
-- PR: none created; do not merge.
+- Commit: `1866657` (`feat(f5): add music registration and staged media`).
+- Branch: `feat/foundation-f5-music-registration`.
+- PR: draft not created/published; do not merge.
