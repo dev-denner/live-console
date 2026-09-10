@@ -1,0 +1,39 @@
+/* Canonical OpenDesign tokens for Live Console V1.
+ * Components should consume semantic variables instead of raw values.
+ */
+:root {
+  --lc-stage: #0d1115;
+  --lc-stage-raised: #131a1f;
+  --lc-surface: #192228;
+  --lc-surface-strong: #202b31;
+  --lc-line: #344149;
+  --lc-line-soft: #273239;
+  --lc-ink: #f4f1e8;
+  --lc-muted: #aab7b7;
+  --lc-quiet: #9aa9aa;
+  --lc-amber: #e5a83b;
+  --lc-amber-bright: #f2be58;
+  --lc-amber-ink: #211707;
+  --lc-teal: #5dd0b4;
+  --lc-teal-ink: #071b18;
+  --lc-danger: #f18486;
+  --lc-danger-soft: #3b2328;
+  --lc-focus: #f5ce7c;
+  --lc-shadow: 0 18px 44px rgb(3 9 12 / 32%);
+  --lc-radius-panel: 18px;
+  --lc-radius-control: 10px;
+  --lc-space-1: 0.375rem;
+  --lc-space-2: 0.625rem;
+  --lc-space-3: 0.875rem;
+  --lc-space-4: 1.25rem;
+  --lc-space-5: 1.75rem;
+  --lc-space-6: 2.5rem;
+  --lc-space-7: 4rem;
+  --lc-content-width: 1220px;
+  --lc-font-display: "Avenir Next", "Segoe UI", sans-serif;
+  --lc-font-body: "Avenir Next", "Segoe UI", sans-serif;
+  --lc-font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --lc-ease-standard: cubic-bezier(0.23, 1, 0.32, 1);
+  --lc-motion-enter: 200ms;
+  --lc-motion-exit: 140ms;
+}
