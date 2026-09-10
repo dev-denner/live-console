@@ -12,7 +12,7 @@
   body {
     background: var(--lc-stage);
     color: var(--lc-ink);
-    font-family: "Avenir Next", "Segoe UI", sans-serif;
+    font-family: var(--lc-font-body);
     text-rendering: optimizeLegibility;
   }
   button, a { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }

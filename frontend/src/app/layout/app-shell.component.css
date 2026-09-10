@@ -1,4 +1,4 @@
-:host { display: block; min-height: 100dvh; background: radial-gradient(circle at 86% 0%, rgba(71, 118, 108, .11), transparent 27rem), var(--lc-stage); }
+:host { display: block; min-height: 100dvh; background: var(--lc-stage); }
 .app-shell { width: min(var(--lc-content-width), calc(100% - 48px)); margin: 0 auto; padding: var(--lc-space-5) 0 var(--lc-space-7); }
 .skip-link { position: fixed; z-index: 2; top: var(--lc-space-3); left: var(--lc-space-3); transform: translateY(-160%); padding: var(--lc-space-2) var(--lc-space-3); border-radius: var(--lc-radius-control); background: var(--lc-amber); color: var(--lc-amber-ink); font-weight: 700; text-decoration: none; transition: transform 180ms ease; }
 .skip-link:focus { transform: translateY(0); }

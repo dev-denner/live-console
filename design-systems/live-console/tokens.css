@@ -7,6 +7,7 @@
   --lc-surface: #192228;
   --lc-surface-strong: #202b31;
   --lc-line: #344149;
+  --lc-line-strong: #4a5b63;
   --lc-line-soft: #273239;
   --lc-ink: #f4f1e8;
   --lc-muted: #aab7b7;
@@ -15,11 +16,16 @@
   --lc-amber-bright: #f2be58;
   --lc-amber-ink: #211707;
   --lc-teal: #5dd0b4;
+  --lc-teal-line: #3d9887;
   --lc-teal-ink: #071b18;
   --lc-danger: #f18486;
+  --lc-danger-line: #b75a67;
   --lc-danger-soft: #3b2328;
   --lc-focus: #f5ce7c;
+  --lc-scrim: rgb(3 8 10 / 78%);
+  --lc-scrim-soft: rgb(3 8 10 / 45%);
   --lc-shadow: 0 18px 44px rgb(3 9 12 / 32%);
+  --lc-shadow-dialog: 0 30px 90px rgb(3 8 10 / 55%);
   --lc-radius-panel: 18px;
   --lc-radius-control: 10px;
   --lc-space-1: 0.375rem;
