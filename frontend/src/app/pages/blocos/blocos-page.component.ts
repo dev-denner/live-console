@@ -59,7 +59,8 @@ export class BlocosPageComponent {
   saveBlock(): void {
     const current = this.draft(); if (!current || !current.nome.trim()) { this.actionError.set('O nome do bloco é obrigatório.'); return; }
     this.busy.set(true); this.actionError.set(null);
-    const request = current.id ? this.service.update(current.id, { ...current, nome: current.nome.trim() }) : this.service.create({ ...current, nome: current.nome.trim() });
+    const draft = { nome: current.nome.trim(), descricao: current.descricao };
+    const request = current.id ? this.service.update(current.id, draft) : this.service.create(draft);
     request.subscribe({ next: (block) => { this.draft.set(null); this.busy.set(false); this.loadBlocks(block.id); }, error: (error: ApiError) => { this.busy.set(false); this.actionError.set(error.message); } });
   }
 
@@ -95,6 +96,14 @@ export class BlocosPageComponent {
   @HostListener('document:keydown.escape')
   closeDialogOnEscape(): void { if (this.draft()) this.closeDraft(); else if (this.deleteCandidate()) this.cancelDelete(); }
 
-  private focusDialog(): void { setTimeout(() => document.querySelector<HTMLElement>('.block-dialog')?.focus(), 0); }
+  private focusDialog(): void {
+    setTimeout(() => {
+      const dialog = document.querySelector<HTMLElement>('.block-dialog');
+      if (!dialog) return;
+      dialog.scrollTop = 0;
+      const firstField = dialog.querySelector<HTMLElement>('input, textarea');
+      (firstField ?? dialog.querySelector<HTMLElement>('button:not([disabled])'))?.focus();
+    }, 0);
+  }
   private restoreDialogFocus(): void { const trigger = this.dialogTrigger; this.dialogTrigger = null; setTimeout(() => trigger?.focus(), 0); }
 }

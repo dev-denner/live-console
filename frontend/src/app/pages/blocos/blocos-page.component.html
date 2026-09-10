@@ -23,7 +23,7 @@
           <div class="panel-heading"><div><p class="section-label">Biblioteca</p><h2>Seus blocos</h2></div><span class="limit-badge">até 10</span></div>
           <div class="block-list-items">
             @for (block of listState().data; track block.id) {
-              <button class="block-list-item" [class.selected]="selectedId() === block.id" type="button" (click)="select(block.id)">
+              <button class="block-list-item" [class.selected]="selectedId() === block.id" type="button" [attr.aria-label]="'Selecionar bloco ' + block.nome" (click)="select(block.id)">
                 <span class="block-list-copy"><strong>{{ block.nome }}</strong><small>{{ block.quantidadeMusicas }} {{ block.quantidadeMusicas === 1 ? 'música' : 'músicas' }}</small></span>
                 <span aria-hidden="true">→</span>
               </button>
@@ -37,7 +37,7 @@
             @case ('error') { <div class="state-panel compact" role="alert"><strong>Não foi possível carregar este bloco.</strong><p>{{ blockState().error.message }}</p><button type="button" (click)="select(selectedId()!)">Tentar novamente</button></div> }
             @case ('success') {
               @if (currentBlock(); as block) {
-                <header class="detail-heading"><div><p class="section-label">Bloco selecionado</p><h2>{{ block.nome }}</h2>@if (block.descricao) { <p class="detail-description">{{ block.descricao }}</p> }</div><div class="detail-actions"><button class="secondary-button" type="button" (click)="editBlock(block, $event)">Editar</button><button class="danger-outline" type="button" (click)="requestDelete({ id: block.id, nome: block.nome, descricao: block.descricao, quantidadeMusicas: block.musicas.length, criadaEm: block.criadaEm, atualizadaEm: block.atualizadaEm }, $event)">Excluir</button></div></header>
+                <header class="detail-heading"><div><p class="section-label">Bloco selecionado</p><h2 [attr.title]="block.nome">{{ block.nome }}</h2>@if (block.descricao) { <p class="detail-description">{{ block.descricao }}</p> }</div><div class="detail-actions"><button class="secondary-button" type="button" (click)="editBlock(block, $event)">Editar</button><button class="danger-outline" type="button" (click)="requestDelete({ id: block.id, nome: block.nome, descricao: block.descricao, quantidadeMusicas: block.musicas.length, criadaEm: block.criadaEm, atualizadaEm: block.atualizadaEm }, $event)">Excluir</button></div></header>
                 <div class="count-line"><strong>{{ block.musicas.length }}/10</strong><span>músicas-base na ordem da apresentação</span></div>
                 <ol class="music-order">
                   @for (music of block.musicas; track music.id; let index = $index) {

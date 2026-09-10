@@ -70,8 +70,14 @@ test('F6 rota Angular deixou de ser placeholder e documenta o limite visual', as
   const root = resolve(process.cwd());
   const routes = await readFile(join(root, 'frontend/src/app/app.routes.ts'), 'utf8');
   const page = await readFile(join(root, 'frontend/src/app/pages/blocos/blocos-page.component.html'), 'utf8');
+  const styles = await readFile(join(root, 'frontend/src/app/pages/blocos/blocos-page.component.css'), 'utf8');
+  const controller = await readFile(join(root, 'frontend/src/app/pages/blocos/blocos-page.component.ts'), 'utf8');
   assert.match(routes, /path: 'blocos', component: BlocosPageComponent/);
   assert.match(page, /até 10/);
   assert.match(page, /option\.motivo/);
   assert.match(page, /Música-base, não versão/);
+  assert.match(page, /attr\.title\]="block\.nome"/);
+  assert.match(styles, /max-height: calc\(100dvh/);
+  assert.match(controller, /dialog\.scrollTop = 0/);
+  assert.match(controller, /input, textarea/);
 });
