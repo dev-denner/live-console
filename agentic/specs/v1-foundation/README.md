@@ -47,6 +47,10 @@ Formalizar o sistema visual já validado em F3 como um pacote local com `manifes
 
 Aplicar os tokens e padrões do pacote OpenDesign ao catálogo V1, sem alterar API, persistência, uploads, exclusão, `xEmLives` ou `/legacy`. A tela deve manter estados loading/empty/error/success, ser acessível e responsiva, e servir como referência visual para a futura F6.
 
+### F6 — Blocos de músicas
+
+Implementar blocos nomeados com músicas-base em ordem manual. Cada bloco aceita até dez músicas e uma música pode pertencer a no máximo um bloco. A tela V1 deve informar visualmente quando a música está inativa ou já pertence a outro bloco. Fabricação automática de lives, clima, vibe e critérios de objetivo continuam fora de escopo.
+
 ## Gate de saída da foundation
 
 A foundation só termina quando:
