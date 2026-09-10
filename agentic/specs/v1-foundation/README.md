@@ -39,6 +39,10 @@ Implementar uma única página v1 escolhida por uma spec própria, provavelmente
 
 Implementar a criação e edição do agregado de música: diálogo pai para metadados e letra Markdown, diálogo filho de aproximadamente 75% para versões ordenadas e upload local seguro. O fluxo permanece em rascunho até o salvamento final; mídia é servida ao navegador por HTTP. Clima, vibe, temperatura de palco e bloco ficam fora deste cadastro; geração automática continua fora de escopo.
 
+### F5.2 — OpenDesign visual foundation
+
+Formalizar o sistema visual já validado em F3 como um pacote local com `manifest.json`, `DESIGN.md` e `tokens.css`, consumível pelo frontend e por agentes. A fase não altera regras de catálogo, contratos, legado, SQLite ou mídia; OpenDesign permanece uma capacidade de proposta sujeita à revisão humana. Deve ser concluída antes da próxima evolução funcional quando a interface depender de decisões visuais compartilhadas.
+
 ## Gate de saída da foundation
 
 A foundation só termina quando:
