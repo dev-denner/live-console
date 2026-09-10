@@ -26,13 +26,15 @@ export class CatalogoService {
     });
   }
 
-  getRegistration(id: string): Observable<MusicRegistration> { return this.api.get(`/api/v1/musicas/${id}`, (payload) => (payload as { musica: MusicRegistration }).musica); }
+  getRegistration(id: string): Observable<MusicRegistration> { return this.api.get(`/api/v1/musicas/${id}`, (payload) => { const music = (payload as { musica: MusicRegistration }).musica; return { ...music, versoes: music.versoes.map((version) => version.tipo === 'youtube' ? version : { ...version, referencia: version.referenciaRelativa ?? version.referencia }) }; }); }
   saveRegistration(registration: MusicRegistration): Observable<MusicRegistration> {
     const url = registration.id ? `/api/v1/musicas/${registration.id}` : '/api/v1/musicas';
     const parse = (payload: unknown) => (payload as { musica: MusicRegistration }).musica;
     const { xEmLives: _xEmLives, letraAviso: _letraAviso, ...payload } = registration;
+    payload.versoes = payload.versoes.map((version) => version.tipo === 'youtube' ? version : { ...version, referencia: version.referenciaRelativa ?? version.referencia });
     return registration.id ? this.api.put(url, payload, parse) : this.api.post(url, payload, parse);
   }
+  deleteRegistration(id: string): Observable<unknown> { return this.api.delete(`/api/v1/musicas/${id}`); }
   stage(kind: 'audio' | 'video', file: File): Observable<{ stagingId: string }> { const body = new FormData(); body.append('file', file, file.name); return this.api.post(`/api/media/staging?kind=${kind}`, body); }
   cancelStaging(stagingId: string): Observable<unknown> { return this.api.delete(`/api/media/staging/${stagingId}`); }
 

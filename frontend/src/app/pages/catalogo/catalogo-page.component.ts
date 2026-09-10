@@ -23,6 +23,8 @@ export class CatalogoPageComponent {
   readonly registrationError = signal<string | null>(null);
   readonly versionError = signal<string | null>(null);
   readonly uploadState = signal<string | null>(null);
+  readonly deleteCandidate = signal<CatalogMusic | null>(null);
+  readonly deleteError = signal<string | null>(null);
   private versionTrigger: HTMLElement | null = null;
 
   constructor() { this.load(); }
@@ -60,6 +62,12 @@ export class CatalogoPageComponent {
   saveRegistration(): void {
     const current = this.registration(); if (!current || !current.titulo.trim() || !current.artista.trim()) { this.registrationError.set('Título e artista são obrigatórios.'); return; }
     this.registrationError.set(null); this.service.saveRegistration(current).subscribe({ next: () => { this.closeRegistration(); this.load(); }, error: (error: ApiError) => this.registrationError.set(error.message) });
+  }
+  requestDelete(song: CatalogMusic): void { this.deleteError.set(null); this.deleteCandidate.set(song); }
+  cancelDelete(): void { this.deleteError.set(null); this.deleteCandidate.set(null); }
+  confirmDelete(): void {
+    const song = this.deleteCandidate(); if (!song) return;
+    this.deleteError.set(null); this.service.deleteRegistration(song.id).subscribe({ next: () => { this.deleteCandidate.set(null); this.load(); }, error: (error: ApiError) => this.deleteError.set(`Não foi possível excluir “${song.titulo}”: ${error.message}`) });
   }
   openVersion(version?: MusicVersionDraft, trigger?: EventTarget | null): void {
     this.versionError.set(null); this.versionTrigger = trigger instanceof HTMLElement ? trigger : null;
