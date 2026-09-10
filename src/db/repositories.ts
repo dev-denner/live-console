@@ -37,6 +37,7 @@ export function listMusic(db, filters={}) {
   useDrizzleRepository(db);
   let sql='SELECT * FROM musicas WHERE 1=1', args=[];
   if(filters.activeOnly === true) sql += ' AND ativo=1';
+  if(filters.ativo !== undefined && filters.ativo !== '') { sql+=' AND ativo=?'; args.push(filters.ativo===true||filters.ativo==='true'?1:0); }
   for(const field of ['status','bloco','clima']) if(filters[field] !== undefined && filters[field] !== '') { sql+=` AND ${field}=?`; args.push(filters[field]); }
   if(filters.autoral !== undefined && filters.autoral !== '') { sql+=' AND autoral=?'; args.push(filters.autoral===true||filters.autoral==='true'?1:0); }
   if(filters.q) { sql+=' AND (titulo LIKE ? COLLATE NOCASE OR artista LIKE ? COLLATE NOCASE)'; args.push(`%${filters.q}%`,`%${filters.q}%`); }

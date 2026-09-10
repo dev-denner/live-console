@@ -41,6 +41,25 @@ test('F5 cria, edita e round-tripa música, Markdown e versões sem alterar xEmL
   await app.close(); database.close();
 });
 
+test('F5.1 persiste ativo, permite alternar o campo e filtra a listagem V1', async () => {
+  const { database, app } = setup();
+  const active = await app.inject({ method: 'POST', url: '/api/v1/musicas', payload: { titulo: 'Ativa', artista: 'A' } });
+  const inactive = await app.inject({ method: 'POST', url: '/api/v1/musicas', payload: { titulo: 'Inativa', artista: 'B', ativo: false } });
+  assert.equal(active.json<{ musica: { ativo: boolean } }>().musica.ativo, true);
+  const inactiveId = inactive.json<{ musica: { id: string; ativo: boolean } }>().musica.id;
+  assert.equal(inactive.json<{ musica: { ativo: boolean } }>().musica.ativo, false);
+  let list = await app.inject({ method: 'GET', url: '/api/v1/musicas?ativo=false' });
+  assert.deepEqual(list.json<{ musicas: Array<{ titulo: string; ativo: boolean }> }>().musicas.map((music) => [music.titulo, music.ativo]), [['Inativa', false]]);
+  const edited = await app.inject({ method: 'PUT', url: `/api/v1/musicas/${inactiveId}`, payload: { titulo: 'Inativa', artista: 'B', ativo: true, versoes: [] } });
+  assert.equal(edited.json<{ musica: { ativo: boolean } }>().musica.ativo, true);
+  const reloaded = await app.inject({ method: 'GET', url: `/api/v1/musicas/${inactiveId}` });
+  assert.equal(reloaded.json<{ musica: { ativo: boolean } }>().musica.ativo, true);
+  list = await app.inject({ method: 'GET', url: '/api/v1/musicas?ativo=true' });
+  assert.equal(list.json<{ musicas: Array<{ titulo: string }> }>().musicas.some((music) => music.titulo === 'Inativa'), true);
+  assert.equal(database.prepare('SELECT x_em_lives FROM musicas WHERE id=?').get(inactiveId).x_em_lives, 0);
+  await app.close(); database.close();
+});
+
 test('F5 rejeita ordens duplicadas e remove mídia promovida quando o agregado falha', async () => {
   const { root, database, app } = setup();
   const stagingId = crypto.randomUUID();
