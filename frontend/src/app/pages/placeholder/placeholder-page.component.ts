@@ -12,31 +12,32 @@ export interface PlaceholderPageData {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="placeholder" data-testid="v1-placeholder">
-      <p class="eyebrow">V1 · {{ pageData.title }}</p>
-      <h1>{{ pageData.title }} em construção</h1>
+      <p class="eyebrow">Próximo módulo · {{ pageData.title }}</p>
+      <h1>{{ pageData.title }}<span> em construção</span></h1>
       <p class="description">{{ pageData.description }}</p>
       <div class="state-card" aria-live="polite">
-        <span class="state-label">Estado da tela</span>
+        <span class="state-label">Estado atual</span>
         @switch (state.status) {
           @case ('empty') { <strong>empty</strong> }
           @case ('loading') { <strong>loading</strong> }
           @case ('success') { <strong>success</strong> }
           @case ('error') { <strong>error</strong> }
         }
-        <p>Esta área está reservada para a próxima feature vertical. Nenhum dado foi carregado ou alterado.</p>
+        <p>Esta área está reservada para a próxima entrega. Nenhum dado foi carregado ou alterado.</p>
       </div>
     </section>
   `,
   styles: [`
     :host { display: block; }
-    .placeholder { padding: 44px 8px; }
-    .eyebrow { color: #f5b84b; font-size: .75rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
-    h1 { margin: 12px 0; font-size: clamp(2rem, 5vw, 3.4rem); line-height: 1.05; }
-    .description { max-width: 680px; color: #aab7c8; line-height: 1.7; }
-    .state-card { max-width: 680px; margin-top: 34px; padding: 20px; border: 1px solid #334155; border-radius: 16px; background: #151e2c; }
-    .state-label { display: block; margin-bottom: 8px; color: #94a3b8; font-size: .8rem; text-transform: uppercase; letter-spacing: .1em; }
-    .state-card strong { color: #5ed2ad; font-size: 1.2rem; }
-    .state-card p { color: #aab7c8; line-height: 1.6; }
+    .placeholder { max-width: 760px; padding: var(--lc-space-6) 0; }
+    .eyebrow { color: var(--lc-amber-bright); font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { max-width: 12ch; margin: var(--lc-space-3) 0 var(--lc-space-4); font-size: clamp(2.5rem, 7vw, 5rem); line-height: .95; letter-spacing: -.07em; text-wrap: balance; }
+    h1 span { color: var(--lc-muted); }
+    .description { max-width: 56ch; margin: 0; color: var(--lc-muted); font-size: 1.05rem; line-height: 1.65; }
+    .state-card { max-width: 620px; margin-top: var(--lc-space-7); padding: var(--lc-space-4); border: 1px solid var(--lc-line); border-radius: var(--lc-radius-panel); background: linear-gradient(135deg, rgba(32, 43, 49, .9), rgba(19, 26, 31, .9)); box-shadow: var(--lc-shadow); }
+    .state-label { display: block; margin-bottom: var(--lc-space-2); color: var(--lc-quiet); font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .state-card strong { color: var(--lc-teal); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 1rem; font-variant-numeric: tabular-nums; }
+    .state-card p { max-width: 52ch; margin: var(--lc-space-3) 0 0; color: var(--lc-muted); line-height: 1.6; }
   `]
 })
 export class PlaceholderPageComponent {
