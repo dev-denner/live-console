@@ -43,6 +43,10 @@ Implementar a criação e edição do agregado de música: diálogo pai para met
 
 Formalizar o sistema visual já validado em F3 como um pacote local com `manifest.json`, `DESIGN.md` e `tokens.css`, consumível pelo frontend e por agentes. A fase não altera regras de catálogo, contratos, legado, SQLite ou mídia; OpenDesign permanece uma capacidade de proposta sujeita à revisão humana. Deve ser concluída antes da próxima evolução funcional quando a interface depender de decisões visuais compartilhadas.
 
+### F5.3 — OpenDesign catalog adoption
+
+Aplicar os tokens e padrões do pacote OpenDesign ao catálogo V1, sem alterar API, persistência, uploads, exclusão, `xEmLives` ou `/legacy`. A tela deve manter estados loading/empty/error/success, ser acessível e responsiva, e servir como referência visual para a futura F6.
+
 ## Gate de saída da foundation
 
 A foundation só termina quando:
