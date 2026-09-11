@@ -51,6 +51,10 @@ Aplicar os tokens e padrões do pacote OpenDesign ao catálogo V1, sem alterar A
 
 Implementar blocos nomeados com músicas-base em ordem manual. Cada bloco aceita até dez músicas e uma música pode pertencer a no máximo um bloco. A tela V1 deve informar visualmente quando a música está inativa ou já pertence a outro bloco. Fabricação automática de lives, clima, vibe e critérios de objetivo continuam fora de escopo.
 
+### F7 — Importação e exportação aditiva do catálogo
+
+Importar/exportar músicas e suas versões em JSON. A importação identifica músicas existentes, atualiza os campos recebidos e faz merge aditivo das versões, sem apagar versões anteriores. A prévia e a confirmação ficam disponíveis na rota V1 própria; Excel e fabricação automática continuam fora de escopo.
+
 ## Gate de saída da foundation
 
 A foundation só termina quando:

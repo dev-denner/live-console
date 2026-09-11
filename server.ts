@@ -58,7 +58,7 @@ function lyricsRelativePath(path: string | null | undefined): string | null {
 }
 function registrationView(music: any, lyrics: string | null, warning: string | null) {
   return { id: music.id, titulo: music.titulo, artista: music.artista, genero: music.genero_primario, origem: music.origem,
-    observacoes: music.observacoes, autoral: music.autoral, ativo: music.ativo, xEmLives: music.x_em_lives,
+    observacoes: music.observacoes, autoral: music.autoral, status: Boolean(music.statusV1), xEmLives: music.x_em_lives,
     letraCaminho: music.letra_caminho, letraMarkdown: lyrics, letraAviso: warning,
     versoes: music.fontes.map((source: any) => ({ id: source.id, nome: source.nome, ordem: source.ordem, tipo: source.tipo,
       referencia: source.tipo === 'youtube' ? source.referencia : mediaUrl(source.referencia), ...(source.tipo === 'youtube' ? {} : { referenciaRelativa: source.referencia }),
@@ -67,7 +67,7 @@ function registrationView(music: any, lyrics: string | null, warning: string | n
 
 function catalogView(music: any) {
   return { id: music.id, titulo: music.titulo, artista: music.artista, autoral: music.autoral,
-    ativo: music.ativo, xEmLives: music.x_em_lives,
+    status: Boolean(music.statusV1), xEmLives: music.x_em_lives,
     versoes: music.fontes.map((source: any) => ({ id: source.id, nome: source.nome, ordem: source.ordem,
       tipo: source.tipo, referencia: source.tipo === 'youtube' ? source.referencia : mediaUrl(source.referencia),
       duracao: source.duracao, abertura: source.abertura })) };
@@ -78,7 +78,7 @@ function blockSummaryView(block: any) {
 }
 
 function blockMusicView(song: any) {
-  return { id: song.id, titulo: song.titulo, artista: song.artista, ativo: song.ativo, autoral: song.autoral, xEmLives: song.x_em_lives, ordem: Number(song.ordem), fontes: song.fontes?.map((source: any) => ({ tipo: source.tipo, nome: source.nome, principal: source.principal })) ?? [] };
+  return { id: song.id, titulo: song.titulo, artista: song.artista, status: Boolean(song.statusV1), autoral: song.autoral, xEmLives: song.x_em_lives, ordem: Number(song.ordem), fontes: song.fontes?.map((source: any) => ({ tipo: source.tipo, nome: source.nome, ordem: source.ordem })) ?? [] };
 }
 
 function blockView(block: any) {
@@ -86,7 +86,7 @@ function blockView(block: any) {
 }
 
 function blockMusicOptionView(option: any) {
-  return { id: option.id, titulo: option.titulo, artista: option.artista, ativo: option.ativo, autoral: option.autoral, xEmLives: option.x_em_lives, disponivel: option.disponivel, blocoAtualId: option.blocoAtualId, blocoAtualNome: option.blocoAtualNome, motivo: option.motivo };
+  return { id: option.id, titulo: option.titulo, artista: option.artista, status: Boolean(option.statusV1), autoral: option.autoral, xEmLives: option.x_em_lives, disponivel: option.disponivel, blocoAtualId: option.blocoAtualId, blocoAtualNome: option.blocoAtualNome, motivo: option.motivo };
 }
 
 function localRegistrationReference(storageRoot: string, type: 'audio' | 'video', reference: string): string {
@@ -300,7 +300,11 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
       throw error;
     }
   });
-  app.get('/api/v1/musicas', async (request) => ({ musicas: listMusic(database, request.query as Record<string, unknown>).map(catalogView) }));
+  app.get('/api/v1/musicas', async (request) => {
+    const query = { ...(request.query as Record<string, unknown>) };
+    if (query.status !== undefined) { query.statusV1 = query.status; delete query.status; }
+    return { musicas: listMusic(database, query).map(catalogView) };
+  });
   app.get('/api/musicas', async (request) => ({ musicas: listMusic(database, request.query as Record<string, unknown>) }));
   app.post('/api/musicas', async (request, reply) => {
     const parsed = musicSchema.safeParse(request.body);

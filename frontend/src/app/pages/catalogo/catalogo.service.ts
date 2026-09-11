@@ -11,7 +11,7 @@ export class CatalogoService {
   list(filters: CatalogFilters): Observable<CatalogResponse> {
     const params = new URLSearchParams();
     if (filters.q?.trim()) params.set('q', filters.q.trim());
-    if (filters.ativo !== '' && filters.ativo !== undefined) params.set('ativo', String(filters.ativo));
+    if (filters.status !== '' && filters.status !== undefined) params.set('status', String(filters.status));
     if (filters.autoral !== '' && filters.autoral !== undefined) params.set('autoral', String(filters.autoral));
     const query = params.toString();
     return this.api.get(`/api/v1/musicas${query ? `?${query}` : ''}`, (payload) => {
@@ -40,7 +40,7 @@ export class CatalogoService {
     if (!value || typeof value !== 'object') return false;
     const music = value as Partial<CatalogMusic>;
     return typeof music.id === 'string' && typeof music.artista === 'string' && typeof music.titulo === 'string'
-      && typeof music.autoral === 'boolean' && typeof music.ativo === 'boolean'
+      && typeof music.autoral === 'boolean' && typeof music.status === 'boolean'
       && typeof music.xEmLives === 'number' && Array.isArray(music.versoes);
   }
 }

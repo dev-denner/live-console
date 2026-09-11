@@ -1,1 +1,53 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Live Console catalogo/v1","type":"object","required":["musicas"],"properties":{"formato":{"const":"live-console.catalogo/v1"},"musicas":{"type":"array","items":{"type":"object","required":["artista","titulo","fontes"],"properties":{"artista":{"type":"string","minLength":1},"titulo":{"type":"string","minLength":1},"musicaBase":{"type":["string","null"]},"status":{"type":["string","null"]},"autoral":{"type":"boolean"},"xEmLives":{"type":"integer","minimum":0},"letra":{"type":["string","null"]},"fontes":{"type":"array","items":{"type":"object","required":["nome","tipo","referencia"],"properties":{"nome":{"type":"string","minLength":1},"tipo":{"enum":["youtube","audio","video"]},"referencia":{"type":"string","minLength":1},"principal":{"type":"boolean"},"ordem":{"type":"integer","minimum":1},"duracao":{"type":["integer","null"]}}}}}}}}}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://live-console.local/schemas/catalogo-v1.json",
+  "title": "Live Console — catálogo V1 de músicas e versões",
+  "description": "Contrato canônico da V1. O campo status é booleano: true habilita a música para futuras seleções e false a mantém inativa. O adaptador temporário do /legacy aceita os nomes históricos, mas eles não fazem parte deste formato.",
+  "type": "object",
+  "required": ["musicas"],
+  "properties": {
+    "formato": { "const": "live-console.catalogo/v1" },
+    "musicas": { "type": "array", "items": { "$ref": "#/$defs/musica" } }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "musica": {
+      "type": "object",
+      "description": "Uma obra musical. musicaBase é a identidade lógica da obra e permite evitar duas versões da mesma obra em uma futura live; quando omitido, o sistema pode usar o título como padrão.",
+      "required": ["artista", "titulo"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "artista": { "type": "string", "minLength": 1 },
+        "titulo": { "type": "string", "minLength": 1 },
+        "musicaBase": { "type": ["string", "null"], "description": "Identidade lógica da obra, compartilhada por versões como original e acústica." },
+        "status": { "type": "boolean", "default": true, "description": "true = ativa para futuras seleções; false = inativa." },
+        "observacoes": { "type": ["string", "null"] },
+        "genero": { "type": ["string", "null"] },
+        "xEmLives": { "type": "integer", "minimum": 0, "description": "Contador histórico; a importação nunca o incrementa." },
+        "origem": { "type": ["string", "null"], "description": "Classificação de origem da música, por exemplo Nacional, Internacional ou outra categoria livre." },
+        "autoral": { "type": "boolean", "default": false },
+        "letraCaminho": { "type": ["string", "null"], "description": "Caminho relativo da letra, sem caminho absoluto específico de outro computador." },
+        "versoes": {
+          "type": "array",
+          "description": "Versões são mescladas de forma aditiva durante a importação; versões ausentes no arquivo não são apagadas.",
+          "items": { "$ref": "#/$defs/versao" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "versao": {
+      "type": "object",
+      "required": ["nome", "tipo", "referencia"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "nome": { "type": "string", "minLength": 1 },
+        "tipo": { "enum": ["youtube", "audio", "video"] },
+        "referencia": { "type": "string", "minLength": 1, "description": "URL do YouTube ou caminho relativo do arquivo local." },
+        "ordem": { "type": "integer", "minimum": 1, "description": "A versão de ordem 1 é a versão principal; não existe campo principal separado." },
+        "duracao": { "type": ["integer", "null"], "minimum": 0, "description": "Duração em segundos desta versão específica." },
+        "abertura": { "type": "boolean", "default": false }
+      },
+      "additionalProperties": false
+    }
+  }
+}

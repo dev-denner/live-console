@@ -1,0 +1,37 @@
+<section class="import-page" aria-labelledby="import-title">
+  <header class="page-header">
+    <div><p class="eyebrow">Catálogo local</p><h1 id="import-title">Importar músicas</h1><p class="intro">Atualize músicas existentes e acrescente versões sem apagar o que já foi cadastrado.</p></div>
+    <a class="secondary-button" href="/api/exportacao" download>Exportar catálogo</a>
+  </header>
+
+  <section class="import-card" aria-labelledby="file-title">
+    <div class="section-heading"><div><p class="eyebrow">Entrada</p><h2 id="file-title">Arquivo JSON</h2></div><span class="helper">Formato com musicas[] e versoes[]</span></div>
+    <label class="drop-zone" for="import-file">
+      <strong>{{ fileName() ?? 'Escolher arquivo JSON' }}</strong>
+      <span>{{ fileName() ? musicCount() + ' música(s) carregada(s)' : 'URLs e caminhos permanecem literais.' }}</span>
+      <input id="import-file" type="file" accept="application/json,.json" (change)="readFile($event)" />
+    </label>
+    <div class="actions">
+      <button class="secondary-button" type="button" (click)="clear()" [disabled]="state() === 'reading'">Limpar</button>
+      <button class="primary-button" type="button" (click)="preview()" [disabled]="!payload() || state() === 'previewing' || state() === 'confirming'">Validar prévia</button>
+    </div>
+  </section>
+
+  @if (error()) { <div class="notice error" role="alert">{{ error() }}</div> }
+  @if (state() === 'reading' || state() === 'previewing') { <div class="notice" aria-live="polite">{{ state() === 'reading' ? 'Lendo arquivo…' : 'Validando sem gravar alterações…' }}</div> }
+
+  @if (report(); as result) {
+    <section class="report-card" aria-labelledby="report-title" aria-live="polite">
+      <div class="section-heading"><div><p class="eyebrow">Prévia</p><h2 id="report-title">Relatório da importação</h2></div><span class="badge" [class.success]="state() === 'success'">{{ state() === 'success' ? 'Aplicada' : 'Pronta para confirmar' }}</span></div>
+      <div class="metrics"><div><strong>{{ result.novas.length }}</strong><span>músicas novas</span></div><div><strong>{{ result.atualizaveis.length }}</strong><span>músicas atualizadas</span></div><div><strong>{{ result.versoesNovas }}</strong><span>versões acrescentadas</span></div><div><strong>{{ result.versoesAtualizadas }}</strong><span>versões atualizadas</span></div><div><strong>{{ result.versoesExistentes }}</strong><span>versões já existentes</span></div><div><strong>{{ result.rejeitadas.length }}</strong><span>rejeitadas</span></div></div>
+      @if (result.rejeitadas.length) { <div class="notice error"><strong>Há itens rejeitados.</strong> Ative a importação parcial somente se quiser gravar os itens válidos.</div> }
+      @if (state() !== 'success') {
+        <label class="check-row"><input type="checkbox" [checked]="partial()" (change)="partial.set($any($event.target).checked)" /><span>Permitir importação parcial</span><small>Desativado por padrão; itens rejeitados ficam fora da confirmação.</small></label>
+        <div class="actions"><button class="primary-button" type="button" (click)="confirm()" [disabled]="state() === 'confirming' || (!partial() && result.rejeitadas.length > 0)">{{ state() === 'confirming' ? 'Importando…' : 'Confirmar importação' }}</button></div>
+      }
+      @if (state() === 'success') { <div class="notice success">Importação concluída sem substituir versões anteriores.</div> }
+    </section>
+  }
+
+  @if (!payload() && !error()) { <p class="empty-state">Escolha um arquivo JSON para começar. O catálogo não é alterado durante a prévia.</p> }
+</section>
