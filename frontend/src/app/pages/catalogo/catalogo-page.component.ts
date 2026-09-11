@@ -12,7 +12,7 @@ import { RequestState } from '../../core/models/request-state';
 })
 export class CatalogoPageComponent {
   private readonly service = inject(CatalogoService);
-  readonly filters = signal<CatalogFilters>({ ativo: '', autoral: '' });
+  readonly filters = signal<CatalogFilters>({ status: '', autoral: '' });
   readonly state = signal<RequestState<CatalogMusic[]>>({ status: 'loading' });
   readonly registration = signal<MusicRegistration | null>(null);
   readonly versionDraft = signal<MusicVersionDraft | null>(null);
@@ -41,7 +41,7 @@ export class CatalogoPageComponent {
   }
 
   clearFilters(): void {
-    this.filters.set({ ativo: '', autoral: '' });
+    this.filters.set({ status: '', autoral: '' });
     this.load();
   }
 
@@ -49,7 +49,7 @@ export class CatalogoPageComponent {
   mediaLabel(song: CatalogMusic): string { const type = this.source(song)?.tipo; return type === 'youtube' ? 'YouTube' : type === 'audio' ? 'Áudio' : type === 'video' ? 'Vídeo' : 'Sem mídia'; }
   versionLabel(song: CatalogMusic): string { return this.source(song)?.nome ?? '—'; }
 
-  newMusic(): void { this.registrationError.set(null); this.registration.set({ titulo: '', artista: '', genero: null, origem: null, observacoes: null, autoral: false, ativo: true, xEmLives: 0, letraMarkdown: '', versoes: [] }); setTimeout(() => { const dialog = document.querySelector<HTMLElement>('.music-dialog'); if (dialog) { dialog.scrollTop = 0; dialog.focus(); } }, 0); }
+  newMusic(): void { this.registrationError.set(null); this.registration.set({ titulo: '', artista: '', genero: null, origem: null, observacoes: null, autoral: false, status: true, xEmLives: 0, letraMarkdown: '', versoes: [] }); setTimeout(() => { const dialog = document.querySelector<HTMLElement>('.music-dialog'); if (dialog) { dialog.scrollTop = 0; dialog.focus(); } }, 0); }
   editMusic(song: CatalogMusic): void { this.registrationError.set(null); this.service.getRegistration(song.id).subscribe({ next: (music) => this.registration.set(music), error: (error: ApiError) => this.registrationError.set(error.message) }); }
   closeRegistration(): void { const staged = this.registration()?.versoes.filter((version) => version.stagingId).map((version) => version.stagingId as string) ?? []; staged.forEach((id) => this.service.cancelStaging(id).subscribe()); this.registration.set(null); this.versionDraft.set(null); this.registrationError.set(null); }
   updateRegistration<K extends keyof MusicRegistration>(key: K, value: MusicRegistration[K]): void { this.registration.update((current) => current ? { ...current, [key]: value } : current); }

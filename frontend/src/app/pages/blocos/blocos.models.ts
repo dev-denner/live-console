@@ -11,7 +11,7 @@ export interface BlockMusic {
   id: string;
   titulo: string;
   artista: string;
-  ativo: boolean;
+  status: boolean;
   autoral: boolean;
   xEmLives: number;
   ordem: number;
@@ -30,7 +30,7 @@ export interface BlockMusicOption {
   id: string;
   titulo: string;
   artista: string;
-  ativo: boolean;
+  status: boolean;
   autoral: boolean;
   xEmLives: number;
   disponivel: boolean;

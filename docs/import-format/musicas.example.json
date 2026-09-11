@@ -1,1 +1,35 @@
-{"formato":"live-console.catalogo/v1","musicas":[{"artista":"Exemplo Fictício","titulo":"Canção de Exemplo","musicaBase":"Canção de Exemplo","status":"OK","autoral":false,"xEmLives":0,"letra":"storage/letras/exemplo.md","fontes":[{"nome":"YouTube","tipo":"youtube","referencia":"https://youtu.be/exemplo?t=7","principal":true,"ordem":1},{"nome":"Áudio de demonstração","tipo":"audio","referencia":"storage/audio/exemplo.mp3","principal":false,"ordem":2}]}]}
+{
+  "formato": "live-console.catalogo/v1",
+  "musicas": [
+    {
+      "artista": "Artista Fictício",
+      "titulo": "Gita",
+      "musicaBase": "Gita",
+      "status": true,
+      "observacoes": null,
+      "genero": "Rock",
+      "origem": "Nacional",
+      "autoral": false,
+      "xEmLives": 0,
+      "letraCaminho": "letras/gita.md",
+      "versoes": [
+        {
+          "nome": "Original",
+          "tipo": "youtube",
+          "referencia": "https://youtu.be/exemplo-gita",
+          "ordem": 1,
+          "duracao": 240,
+          "abertura": false
+        },
+        {
+          "nome": "Acústica",
+          "tipo": "youtube",
+          "referencia": "https://youtu.be/exemplo-gita-acustica",
+          "ordem": 2,
+          "duracao": 250,
+          "abertura": true
+        }
+      ]
+    }
+  ]
+}

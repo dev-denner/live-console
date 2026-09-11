@@ -18,9 +18,9 @@ test('F3 normaliza erros HTTP estruturados e respostas textuais', () => {
   });
 });
 
-test('F3 publica as quatro fronteiras de navegação da V1', () => {
+test('V1 publica as fronteiras de navegação do shell', () => {
   assert.deepEqual(v1Navigation.map((item) => item.path), [
-    'catalogo', 'lives', 'blocos', 'execucao'
+    'catalogo', 'lives', 'blocos', 'importacao', 'execucao'
   ]);
-  assert.deepEqual(v1Navigation.map((item) => item.label), ['Catálogo', 'Lives', 'Blocos', 'Execução']);
+  assert.deepEqual(v1Navigation.map((item) => item.label), ['Catálogo', 'Lives', 'Blocos', 'Importar', 'Execução']);
 });
