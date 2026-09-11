@@ -60,3 +60,14 @@ export const idempotencySchema=z.object({idempotencyKey:z.string().uuid()}).stri
 export function messageForValidation(error: z.ZodError): string {
   return error.issues.map((issue) => `${issue.path.join('.') || 'corpo'}: ${issue.message}`).join('; ');
 }
+
+const liveDraftItemSchema = z.object({ musicaId:z.string().uuid(), versaoId:z.string().uuid(), titulo:z.string(), artista:z.string(), musicaBase:z.string(), duracao:z.number().int().nonnegative().nullable(), xEmLives:z.number().int().nonnegative() }).strict();
+export const liveDraftSegmentSchema = z.discriminatedUnion('tipo', [
+  z.object({tipo:z.literal('bloco'),blocoId:z.string().uuid(),nome:z.string(),itens:z.array(liveDraftItemSchema)}).strict(),
+  z.object({tipo:z.literal('musica'),...liveDraftItemSchema.shape}).strict()
+]);
+export const liveDraftCompositionSchema = z.object({
+  abertura:z.object({musicaId:z.string().uuid(),versaoId:z.string().uuid(),titulo:z.string(),artista:z.string(),nomeVersao:z.string(),duracao:z.number().int().nonnegative().nullable(),xEmLives:z.number().int().nonnegative()}).strict().nullable(),
+  segmentos:z.array(liveDraftSegmentSchema)
+}).strict();
+export const liveDraftSchema = z.object({id:z.string().uuid().optional(),nome:z.string().trim().max(160).optional(),composicao:liveDraftCompositionSchema}).strict();
