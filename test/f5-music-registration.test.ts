@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
 import { createApp } from '../server.js';
-import { openDatabase, getMusic, createBlock, addBlockMusic } from '../src/db/repositories.js';
+import { openDatabase, getMusic, updateMusic, createBlock, addBlockMusic } from '../src/db/repositories.js';
 
 function setup() {
   const root = mkdtempSync(join(tmpdir(), 'live-console-f5-'));
@@ -38,6 +38,44 @@ test('F5 cria, edita e round-tripa música, Markdown e versões sem alterar xEmL
   unlinkSync(lyricsPath);
   const missing = await app.inject({ method: 'GET', url: `/api/v1/musicas/${music.id}` });
   assert.match(missing.json<{ musica: { letraAviso: string } }>().musica.letraAviso, /não foi encontrada/);
+  await app.close(); database.close();
+});
+
+test('F5 edita mídia local sem reenviar referenciaRelativa e preserva o agregado', async () => {
+  const { root, database, app } = setup(); const staging = join(root, '.staging'); mkdirSync(staging, { recursive: true });
+  const oldStagingId = crypto.randomUUID(); writeFileSync(join(staging, `${oldStagingId}.mp3`), Buffer.from('old-audio'));
+  const videoStagingId = crypto.randomUUID(); writeFileSync(join(staging, `${videoStagingId}.mp4`), Buffer.from('video'));
+  const valid = await app.inject({ method: 'POST', url: '/api/v1/musicas', payload: { titulo: 'Mídia editável', artista: 'Artista F5', status: true, letraMarkdown: '# Letra intacta', versoes: [
+    { id: crypto.randomUUID(), nome: 'Áudio', ordem: 1, tipo: 'audio', referencia: 'old.mp3', stagingId: oldStagingId, duracao: 120, abertura: false },
+    { id: crypto.randomUUID(), nome: 'Vídeo', ordem: 2, tipo: 'video', referencia: 'video.mp4', stagingId: videoStagingId, duracao: 130, abertura: false },
+    { id: crypto.randomUUID(), nome: 'YouTube', ordem: 3, tipo: 'youtube', referencia: 'https://youtu.be/preservado', duracao: 140, abertura: false }
+  ] } });
+  assert.equal(valid.statusCode, 201);
+  const initial = valid.json<{ musica: { id: string; xEmLives: number; letraMarkdown: string; versoes: Array<{ id: string; nome: string; ordem: number; tipo: string; referencia: string; referenciaRelativa?: string; duracao: number; abertura: boolean }> } }>().musica;
+  updateMusic(database, initial.id, { xEmLives: 7 });
+  const loaded = await app.inject({ method: 'GET', url: `/api/v1/musicas/${initial.id}` });
+  const read = loaded.json<{ musica: typeof initial }>().musica;
+  assert.ok(read.versoes.find((version) => version.tipo === 'audio')?.referenciaRelativa);
+
+  const writeVersion = (version: typeof read.versoes[number], extra: Record<string, unknown> = {}) => ({ id: version.id, nome: version.nome, ordem: version.ordem, tipo: version.tipo, referencia: version.tipo === 'youtube' ? version.referencia : version.referenciaRelativa, duracao: version.duracao, abertura: version.abertura, ...extra });
+  const withoutReplacement = { id: read.id, titulo: read.titulo, artista: read.artista, genero: read.genero, origem: read.origem, observacoes: read.observacoes, autoral: read.autoral, status: read.status, letraMarkdown: read.letraMarkdown, versoes: read.versoes.map((version) => writeVersion(version)) };
+  const savedWithoutReplacement = await app.inject({ method: 'PUT', url: `/api/v1/musicas/${initial.id}`, payload: withoutReplacement });
+  assert.equal(savedWithoutReplacement.statusCode, 200);
+  assert.equal(savedWithoutReplacement.json<{ musica: { letraMarkdown: string } }>().musica.letraMarkdown, '# Letra intacta');
+  assert.equal(getMusic(database, initial.id).x_em_lives, 7);
+
+  const newStagingId = crypto.randomUUID(); writeFileSync(join(staging, `${newStagingId}.mp3`), Buffer.from('new-audio'));
+  const oldAudio = read.versoes.find((version) => version.tipo === 'audio'); const oldAudioPath = join(root, oldAudio?.referenciaRelativa as string);
+  const replacement = { ...withoutReplacement, versoes: read.versoes.map((version) => version.tipo === 'audio' ? writeVersion(version, { referencia: 'new.mp3', stagingId: newStagingId }) : writeVersion(version)) };
+  const savedReplacement = await app.inject({ method: 'PUT', url: `/api/v1/musicas/${initial.id}`, payload: replacement });
+  assert.equal(savedReplacement.statusCode, 200);
+  const after = savedReplacement.json<{ musica: { versoes: Array<{ tipo: string; referencia: string; referenciaRelativa?: string }> } }>().musica;
+  const newAudio = after.versoes.find((version) => version.tipo === 'audio');
+  assert.ok(newAudio?.referenciaRelativa); assert.equal(existsSync(join(root, newAudio.referenciaRelativa)), true); assert.equal(existsSync(oldAudioPath), true);
+  assert.equal(after.versoes.find((version) => version.tipo === 'youtube')?.referencia, 'https://youtu.be/preservado');
+  assert.ok(after.versoes.find((version) => version.tipo === 'video')?.referenciaRelativa);
+  assert.equal(existsSync(join(root, '.staging', `${newStagingId}.mp3`)), false);
+  assert.equal((await app.inject({ method: 'GET', url: '/legacy' })).statusCode, 200);
   await app.close(); database.close();
 });
 

@@ -79,6 +79,6 @@ export class CatalogoPageComponent {
   removeVersion(version: MusicVersionDraft): void { this.registration.update((current) => current ? { ...current, versoes: current.versoes.filter((item) => item.id !== version.id) } : current); }
   uploadVersion(event: Event): void {
     const file = (event.target as HTMLInputElement).files?.[0]; const version = this.versionDraft(); if (!file || !version || version.tipo === 'youtube') return;
-    this.uploadState.set('Enviando para staging…'); this.service.stage(version.tipo, file).subscribe({ next: (result) => { this.updateVersion('stagingId', result.stagingId); this.updateVersion('referencia', file.name); this.uploadState.set('Upload pronto; será promovido ao salvar.'); }, error: (error: ApiError) => this.uploadState.set(error.message) });
+    this.uploadState.set('Enviando para staging…'); this.service.stage(version.tipo, file).subscribe({ next: (result) => { this.versionDraft.update((current) => current ? { ...current, stagingId: result.stagingId, referencia: file.name } : current); this.uploadState.set('Upload pronto; será promovido ao salvar.'); }, error: (error: ApiError) => this.uploadState.set(error.message) });
   }
 }
