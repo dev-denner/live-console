@@ -21,7 +21,17 @@ export function liveDraftOptions(db: any, storageRoot: string) {
   const membership=new Set(db.prepare('SELECT musica_id FROM musicas_do_bloco').all().map((row: any) => row.musica_id));
   const aberturas=songs.flatMap((song: any) => { const version=song.versoes.find((item: any) => item.abertura); return version ? [{...song,versao:version}] : []; });
   const musicasSemBloco=songs.filter((song: any) => !membership.has(song.id));
-  const blocos=listBlocks(db).map((summary: any) => { const block=getBlock(db,summary.id); const itens=block.musicas.map((music: any) => { const song=byId.get(music.id); if(!song) return null; const version=song.versoes.find((item: any) => item.principal) ?? song.versoes[0]; return { musicaId:song.id, versaoId:version.id, titulo:song.titulo, artista:song.artista, musicaBase:song.musicaBase, duracao:version.duracao, xEmLives:song.xEmLives, autoral:song.autoral, tipo:version.tipo, nomeVersao:version.nome }; }).filter(Boolean); return itens.length ? {id:block.id,nome:block.nome,descricao:block.descricao,xEmLives:itens.reduce((sum: number,item: any)=>sum+item.xEmLives,0),itens} : null; }).filter(Boolean);
+  const blocos=listBlocks(db).map((summary: any) => {
+    const block=getBlock(db,summary.id);
+    const itens=block.musicas.map((music: any) => {
+      const song=byId.get(music.id);
+      if(!song) return null;
+      const version=song.versoes.find((item: any) => item.principal) ?? song.versoes[0];
+      return { musicaId:song.id, versaoId:version.id, titulo:song.titulo, artista:song.artista, musicaBase:song.musicaBase, duracao:version.duracao, xEmLives:song.xEmLives, autoral:song.autoral, tipo:version.tipo, nomeVersao:version.nome };
+    });
+    // A block is atomic: an inactive or unplayable member invalidates the whole block.
+    return itens.every(Boolean) ? {id:block.id,nome:block.nome,descricao:block.descricao,xEmLives:itens.reduce((sum: number,item: any)=>sum+item.xEmLives,0),itens} : null;
+  }).filter(Boolean);
   return {aberturas,blocos,musicasSemBloco};
 }
 
@@ -29,13 +39,16 @@ function validate(db: any, storageRoot: string, composition: any) {
   const options=liveDraftOptions(db,storageRoot); const openings=options.aberturas;
   if (openings.length && !composition.abertura) throw new Error('Escolha uma abertura antes de salvar o rascunho');
   const used=new Set<string>();
-  if (composition.abertura) { const opening=openings.find((item: any) => item.id===composition.abertura.musicaId && item.versao.id===composition.abertura.versaoId); if(!opening) throw new Error('A abertura selecionada não está mais disponível'); used.add(opening.musicaBase); }
+  const openingId=composition.abertura?.musicaId;
+  if (composition.abertura) { const opening=openings.find((item: any) => item.id===composition.abertura.musicaId && item.versao.id===composition.abertura.versaoId); if(!opening) throw new Error('A abertura selecionada não está mais disponível'); used.add(opening.id); }
   for (const segment of composition.segmentos) {
     if (segment.tipo==='bloco') {
-      const block=options.blocos.find((item: any) => item.id===segment.blocoId); if(!block || block.itens.length!==segment.itens.length || block.itens.some((item: any,index: number) => item.musicaId!==segment.itens[index].musicaId || item.versaoId!==segment.itens[index].versaoId)) throw new Error('O bloco selecionado mudou no catálogo; recarregue e tente novamente');
-      for (const item of segment.itens) { if(used.has(item.musicaBase)) throw new Error(`A música-base "${item.titulo}" já está no rascunho`); used.add(item.musicaBase); }
+      const block=options.blocos.find((item: any) => item.id===segment.blocoId);
+      const expected=block?.itens.filter((item: any) => item.musicaId!==openingId) ?? [];
+      if(!block || expected.length===0 || expected.length!==segment.itens.length || expected.some((item: any,index: number) => item.musicaId!==segment.itens[index].musicaId || item.versaoId!==segment.itens[index].versaoId)) throw new Error('O bloco selecionado mudou no catálogo; recarregue e tente novamente');
+      for (const item of segment.itens) { if(used.has(item.musicaId)) throw new Error(`A música "${item.titulo}" já está no rascunho`); used.add(item.musicaId); }
     } else {
-      const song=getMusic(db,segment.musicaId); const option=song&&songOption(song,storageRoot); const version=option?.versoes.find((item: any) => item.id===segment.versaoId); if(!option || !version || db.prepare('SELECT 1 FROM musicas_do_bloco WHERE musica_id=?').get(segment.musicaId)) throw new Error(`A música "${segment.titulo}" não está disponível individualmente`); if(segment.musicaBase!==option.musicaBase) throw new Error('O snapshot da música não corresponde ao catálogo atual'); if(used.has(option.musicaBase)) throw new Error(`A música-base "${segment.titulo}" já está no rascunho`); used.add(option.musicaBase);
+      const song=getMusic(db,segment.musicaId); const option=song&&song.ativo?songOption(song,storageRoot):null; const version=option?.versoes.find((item: any) => item.id===segment.versaoId); if(!option || !version || db.prepare('SELECT 1 FROM musicas_do_bloco WHERE musica_id=?').get(segment.musicaId)) throw new Error(`A música "${segment.titulo}" não está disponível individualmente`); if(used.has(option.id)) throw new Error(`A música "${segment.titulo}" já está no rascunho`); used.add(option.id);
     }
   }
   return composition;
