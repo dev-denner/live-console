@@ -1,1 +1,72 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Live Console catalogo/v1","type":"object","required":["musicas"],"properties":{"formato":{"const":"live-console.catalogo/v1"},"musicas":{"type":"array","items":{"type":"object","required":["artista","titulo","fontes"],"properties":{"artista":{"type":"string","minLength":1},"titulo":{"type":"string","minLength":1},"musicaBase":{"type":["string","null"]},"status":{"type":["string","null"]},"autoral":{"type":"boolean"},"xEmLives":{"type":"integer","minimum":0},"letra":{"type":["string","null"]},"fontes":{"type":"array","items":{"type":"object","required":["nome","tipo","referencia"],"properties":{"nome":{"type":"string","minLength":1},"tipo":{"enum":["youtube","audio","video"]},"referencia":{"type":"string","minLength":1},"principal":{"type":"boolean"},"ordem":{"type":"integer","minimum":1},"duracao":{"type":["integer","null"]}}}}}}}}}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Live Console catálogo v1 — músicas e versões",
+  "type": "object",
+  "required": ["musicas"],
+  "properties": {
+    "formato": { "const": "live-console.catalogo/v1" },
+    "musicas": { "type": "array", "items": { "$ref": "#/$defs/musica" } }
+  },
+  "$defs": {
+    "musica": {
+      "type": "object",
+      "required": ["artista", "titulo"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "artista": { "type": "string", "minLength": 1 },
+        "titulo": { "type": "string", "minLength": 1 },
+        "musicaBase": { "type": ["string", "null"] },
+        "status": { "type": ["string", "null"] },
+        "observacoes": { "type": ["string", "null"] },
+        "generoPrimario": { "type": ["string", "null"] },
+        "generoSecundario": { "type": ["string", "null"] },
+        "xEmLives": { "type": "integer", "minimum": 0 },
+        "origem": { "type": ["string", "null"] },
+        "autoral": { "type": "boolean" },
+        "ativo": { "type": "boolean" },
+        "duracao": { "type": ["integer", "null"], "minimum": 0 },
+        "vibePrincipal": { "type": ["string", "null"] },
+        "vibeSecundaria": { "type": ["string", "null"] },
+        "temperaturaDePalco": { "type": ["string", "null"] },
+        "bloco": { "type": ["string", "null"] },
+        "clima": { "type": ["string", "null"] },
+        "letra": { "type": ["string", "null"] },
+        "letraCaminho": { "type": ["string", "null"] },
+        "genero": { "type": ["string", "null"] },
+        "versoes": { "type": "array", "items": { "$ref": "#/$defs/versao" } },
+        "fontes": { "type": "array", "items": { "$ref": "#/$defs/versaoObjeto" } }
+      },
+      "additionalProperties": false
+    },
+    "versao": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        { "$ref": "#/$defs/versaoObjeto" }
+      ]
+    },
+    "versaoObjeto": {
+      "type": "object",
+      "required": ["nome", "tipo"],
+      "anyOf": [
+        { "required": ["referencia"] },
+        { "required": ["linkOuCaminho"] },
+        { "required": ["youtube"] },
+        { "required": ["arquivo"] }
+      ],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "nome": { "type": "string", "minLength": 1 },
+        "tipo": { "enum": ["youtube", "audio", "video"] },
+        "referencia": { "type": "string", "minLength": 1 },
+        "linkOuCaminho": { "type": "string", "minLength": 1 },
+        "youtube": { "type": "string", "minLength": 1 },
+        "arquivo": { "type": "string", "minLength": 1 },
+        "principal": { "type": "boolean" },
+        "ordem": { "type": "integer", "minimum": 1 },
+        "duracao": { "type": ["integer", "null"], "minimum": 0 },
+        "abertura": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
