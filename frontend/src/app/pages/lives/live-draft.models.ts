@@ -11,4 +11,5 @@ export interface DraftMusicSegment { tipo:'musica'; musicaId:string; versaoId:st
 export interface DraftBlockSegment { tipo:'bloco'; blocoId:string; nome:string; itens:DraftCompositionItem[]; }
 export type DraftSegment = DraftMusicSegment | DraftBlockSegment;
 export interface DraftComposition { abertura:DraftOpeningSelection|null; segmentos:DraftSegment[]; }
-export interface LiveDraft { id:string; nome:string; status:'draft'; composicao:DraftComposition; opcoes:DraftOptions; criadaEm:string; atualizadaEm:string; }
+export interface LiveDraft { id:string; nome:string; status:'draft'; composicao:DraftComposition; opcoes:DraftOptions; geracao?:DraftGeneration|null; criadaEm:string; atualizadaEm:string; }
+export interface DraftGeneration { modo:'automatico'; quantidadeReferencia:number; quantidadeGerada:number; autoraisDesejadas:number; autoraisGeradas:number; seed:string; algoritmo:string; geradoEm:string; avisos:string[]; }

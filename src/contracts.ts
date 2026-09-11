@@ -71,3 +71,4 @@ export const liveDraftCompositionSchema = z.object({
   segmentos:z.array(liveDraftSegmentSchema)
 }).strict();
 export const liveDraftSchema = z.object({id:z.string().uuid().optional(),nome:z.string().trim().max(160).optional(),composicao:liveDraftCompositionSchema}).strict();
+export const liveDraftGenerateSchema = z.object({quantidadeReferencia:z.number().int().positive().max(200).default(30),autoraisDesejadas:z.number().int().nonnegative().max(200).default(0),aberturaId:z.string().uuid().nullable().optional(),seed:z.string().trim().min(1).max(120).nullable().optional()}).strict();
