@@ -53,3 +53,10 @@ Contrato exportado após confirmação: `status` booleano, ausência de `ativo`,
 | `git diff --check` | passou |
 
 Resultado: PASS. A PR de correção deve permanecer draft até revisão/aprovação; não fazer merge automático.
+
+
+## Artefatos de arquitetura adicionados após a implementação
+
+- PRD e especificação técnica F7.1 adicionados ao mesmo diretório.
+- ADR-002 registra que a importação canônica deve ser validada no bundle servido em `/v1/importacao`.
+- Skill e prompt operacional adicionados para repetir a verificação no Codex.
