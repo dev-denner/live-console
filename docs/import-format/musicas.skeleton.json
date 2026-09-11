@@ -4,7 +4,7 @@
     {
       "artista": "",
       "titulo": "",
-      "ativo": true,
+      "status": true,
       "autoral": false,
       "versoes": []
     }

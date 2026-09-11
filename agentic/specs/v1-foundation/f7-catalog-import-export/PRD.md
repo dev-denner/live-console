@@ -6,9 +6,9 @@ Permitir importar e exportar o catálogo local por JSON sem duplicar músicas e 
 
 ## Contrato de entrada
 
-O JSON é um objeto com `musicas[]`. Cada música pode conter todos os campos editáveis do catálogo (`artista`, `titulo`, `musicaBase`, `status`, `observacoes`, gêneros, origem, autoral, ativo, duração, vibes, temperatura, bloco, clima e letra) e um array `versoes[]`.
+O JSON é um objeto com `musicas[]`. Cada música usa o contrato V1 canônico (`artista`, `titulo`, `musicaBase`, `status` booleano, `observacoes`, `genero`, `origem`, `autoral`, `xEmLives`, `letraCaminho`) e um array `versoes[]`.
 
-Cada versão pode ser um objeto completo (`id`, `nome`, `tipo`, `referencia`, `ordem`, `duracao`, `abertura`, `principal`) ou uma string abreviada. A forma legada `fontes[]` continua aceita.
+Cada versão é um objeto (`id`, `nome`, `tipo`, `referencia`, `ordem`, `duracao`, `abertura`). `ordem: 1` define a versão principal; não há campo `principal`. A forma legada `fontes[]` continua aceita somente pelo adaptador de transição.
 
 ## Regras de merge
 

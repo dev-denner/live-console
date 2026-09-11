@@ -5,20 +5,13 @@
       "artista": "Artista Fictício",
       "titulo": "Gita",
       "musicaBase": "Gita",
-      "status": "OK",
+      "status": true,
       "observacoes": null,
-      "generoPrimario": "Rock",
-      "generoSecundario": null,
+      "genero": "Rock",
       "origem": "Nacional",
       "autoral": false,
-      "ativo": true,
-      "duracao": 240,
-      "vibePrincipal": "Energia",
-      "vibeSecundaria": "Reflexiva",
-      "temperaturaDePalco": "Média",
-      "bloco": null,
-      "clima": "Saudades",
-      "letra": "storage/letras/gita.md",
+      "xEmLives": 0,
+      "letraCaminho": "letras/gita.md",
       "versoes": [
         {
           "nome": "Original",
@@ -26,8 +19,7 @@
           "referencia": "https://youtu.be/exemplo-gita",
           "ordem": 1,
           "duracao": 240,
-          "abertura": false,
-          "principal": true
+          "abertura": false
         },
         {
           "nome": "Acústica",
@@ -35,8 +27,7 @@
           "referencia": "https://youtu.be/exemplo-gita-acustica",
           "ordem": 2,
           "duracao": 250,
-          "abertura": true,
-          "principal": false
+          "abertura": true
         }
       ]
     }

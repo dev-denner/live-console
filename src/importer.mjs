@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { createMusic, listMusic, getMusic, updateMusic, transaction } from './db/repositories.js';
 
 const MUSIC_FIELDS = new Set([
-  'artista', 'titulo', 'musicaBase', 'status', 'observacoes', 'generoPrimario',
+  'artista', 'titulo', 'musicaBase', 'statusAtivo', 'status', 'observacoes', 'generoPrimario',
   'generoSecundario', 'xEmLives', 'origem', 'autoral', 'ativo', 'duracao',
   'vibePrincipal', 'vibeSecundaria', 'temperaturaDePalco', 'bloco', 'clima',
   'letra', 'letraCaminho'
@@ -14,6 +14,7 @@ const permitted = new Set(['youtube', 'audio', 'video']);
 const identity = item => `${item.artista}\u0000${item.titulo}\u0000${item.musicaBase ?? item.musica_base ?? item.titulo}`;
 const sourceIdentity = source => `${source.tipo}\u0000${source.referencia}`;
 const compare = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const comparableVersion = source => ({ nome: source.nome, tipo: source.tipo, referencia: source.referencia, ordem: source.ordem ?? null, duracao: source.duracao ?? null, abertura: Boolean(source.abertura) });
 function versionMatch(incoming, current) {
   if (incoming.id) return incoming.id === current.id;
   if (sourceIdentity(incoming) === sourceIdentity(current)) return true;
@@ -44,11 +45,44 @@ function normalizeMusic(item) {
   const normalized = { ...item };
   if (normalized.generoPrimario === undefined && normalized.genero !== undefined) normalized.generoPrimario = normalized.genero;
   if (normalized.letra === undefined && normalized.letraCaminho !== undefined) normalized.letra = normalized.letraCaminho;
+  if (typeof normalized.status === 'boolean') {
+    normalized.statusAtivo = normalized.status;
+    delete normalized.status;
+  } else if (normalized.statusAtivo === undefined && normalized.ativo !== undefined) {
+    normalized.statusAtivo = Boolean(normalized.ativo);
+  }
   normalized.fontes = incomingVersions(item);
   delete normalized.versoes;
   delete normalized.genero;
   delete normalized.letraCaminho;
   return normalized;
+}
+
+function comparableMusic(item) {
+  const normalized = normalizeMusic(item);
+  const comparable = {};
+  for (const key of MUSIC_FIELDS) if (normalized[key] !== undefined && key !== 'xEmLives') comparable[key] = normalized[key];
+  return comparable;
+}
+
+function comparableStoredMusic(item) {
+  return comparableMusic({
+    artista: item.artista,
+    titulo: item.titulo,
+    musicaBase: item.musicaBase ?? item.musica_base,
+    statusAtivo: item.statusV1 ?? item.status_ativo ?? item.ativo,
+    observacoes: item.observacoes,
+    generoPrimario: item.generoPrimario ?? item.genero_primario,
+    generoSecundario: item.generoSecundario ?? item.genero_secundario,
+    origem: item.origem,
+    autoral: item.autoral,
+    letra: item.letra ?? item.letra_caminho,
+    vibePrincipal: item.vibePrincipal ?? item.vibe_principal,
+    vibeSecundaria: item.vibeSecundaria ?? item.vibe_secundaria,
+    temperaturaDePalco: item.temperaturaDePalco ?? item.temperatura_de_palco,
+    bloco: item.bloco,
+    clima: item.clima
+  });
 }
 
 function validateVersion(source, index, errors) {
@@ -70,7 +104,6 @@ function validate(item, index, report, storageRoot) {
   if (item && item.versoes !== undefined && !Array.isArray(item.versoes)) errors.push('versoes deve ser uma lista');
 
   const seen = new Set();
-  let principal = 0;
   normalized.fontes.forEach((source, sourceIndex) => {
     validateVersion(source, sourceIndex, errors);
     if (source && source.tipo && source.referencia) {
@@ -78,13 +111,11 @@ function validate(item, index, report, storageRoot) {
       if (seen.has(key)) errors.push(`versão ${sourceIndex + 1}: referência duplicada no item`);
       seen.add(key);
     }
-    if (source?.principal) principal++;
     if (typeof source?.referencia === 'string' && isAbsolute(source.referencia)) {
       report.caminhosLegados.push({ index, referencia: source.referencia });
       (existsSync(resolve(storageRoot, source.referencia)) ? report.arquivosEncontrados : report.arquivosNaoEncontrados).push(source.referencia);
     }
   });
-  if (principal > 1) errors.push('mais de uma versão principal');
   if (errors.length) {
     report.rejeitadas.push({ index, errors });
     return null;
@@ -127,14 +158,15 @@ export function inspectImport(db, payload, { storageRoot = process.cwd() } = {})
       return;
     }
     const oldSources = new Map(prior.fontes.map(source => [sourceIdentity(source), source]));
-    const fields = { ...normalized, fontes: undefined };
-    const oldFields = { ...prior, fontes: undefined };
+    const fields = comparableMusic(normalized);
+    const storedFields = comparableStoredMusic(prior);
+    const oldFields = Object.fromEntries(Object.keys(fields).map((key) => [key, storedFields[key]]));
     let hasNewVersion = false;
     let hasVersionUpdate = false;
     normalized.fontes.forEach(source => {
       const old = prior.fontes.find(candidate => versionMatch(source, candidate)) ?? oldSources.get(sourceIdentity(source));
       if (!old) { report.referenciasNovas++; report.versoesNovas++; hasNewVersion = true; }
-      else if (compare({ ...old, id: undefined, criada_em: undefined, atualizada_em: undefined }, { ...source, id: old.id, criada_em: undefined, atualizada_em: undefined })) { report.referenciasExistentes++; report.versoesExistentes++; }
+      else if (compare(comparableVersion(old), comparableVersion(source))) { report.referenciasExistentes++; report.versoesExistentes++; }
       else { report.versoesAtualizadas++; hasVersionUpdate = true; }
     });
     if (compare(fields, oldFields) && !hasNewVersion && !hasVersionUpdate) report.identicas.push(index);
@@ -188,7 +220,7 @@ function mergeVersions(db, musicId, incoming, report) {
       if (patch.principal === true) principalId = row.id;
       const principal = row.id === principalId;
       db.prepare('UPDATE fontes_musica SET nome=?,tipo=?,referencia=?,principal=?,ordem=?,duracao=?,abertura=?,atualizada_em=? WHERE id=? AND musica_id=?')
-        .run(patch.nome, patch.tipo, patch.referencia, principal ? 1 : 0, index + 1, patch.duracao ?? row.duracao ?? null, patch.abertura ?? row.abertura ? 1 : 0, new Date().toISOString(), row.id, musicId);
+        .run(patch.nome, patch.tipo, patch.referencia, principal ? 1 : 0, index + 1, patch.duracao ?? row.duracao ?? null, (patch.abertura ?? row.abertura) ? 1 : 0, new Date().toISOString(), row.id, musicId);
     } else {
       db.prepare('UPDATE fontes_musica SET principal=?,ordem=?,atualizada_em=? WHERE id=? AND musica_id=?')
         .run(row.id === principalId ? 1 : 0, index + 1, new Date().toISOString(), row.id, musicId);

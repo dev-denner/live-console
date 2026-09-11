@@ -15,7 +15,7 @@ function setup() {
 
 test('F5 cria, edita e round-tripa música, Markdown e versões sem alterar xEmLives', async () => {
   const { root, database, app } = setup();
-  const payload = { titulo: 'Canção F5', artista: 'Artista F5', genero: null, origem: null, observacoes: null, autoral: true, ativo: true, letraMarkdown: '# Refrão\n\nTexto UTF-8: ação', versoes: [
+  const payload = { titulo: 'Canção F5', artista: 'Artista F5', genero: null, origem: null, observacoes: null, autoral: true, status: true, letraMarkdown: '# Refrão\n\nTexto UTF-8: ação', versoes: [
     { id: crypto.randomUUID(), nome: 'Principal', ordem: 1, tipo: 'youtube', referencia: 'https://youtu.be/a?x=1&y=2', duracao: 120, abertura: true },
     { id: crypto.randomUUID(), nome: 'Acústica', ordem: 2, tipo: 'youtube', referencia: 'https://youtube.com/watch?v=literal%2Fvalue', duracao: null, abertura: false }
   ] };
@@ -41,20 +41,20 @@ test('F5 cria, edita e round-tripa música, Markdown e versões sem alterar xEmL
   await app.close(); database.close();
 });
 
-test('F5.1 persiste ativo, permite alternar o campo e filtra a listagem V1', async () => {
+test('F5.1 persiste status booleano, permite alternar o campo e filtra a listagem V1', async () => {
   const { database, app } = setup();
   const active = await app.inject({ method: 'POST', url: '/api/v1/musicas', payload: { titulo: 'Ativa', artista: 'A' } });
-  const inactive = await app.inject({ method: 'POST', url: '/api/v1/musicas', payload: { titulo: 'Inativa', artista: 'B', ativo: false } });
-  assert.equal(active.json<{ musica: { ativo: boolean } }>().musica.ativo, true);
-  const inactiveId = inactive.json<{ musica: { id: string; ativo: boolean } }>().musica.id;
-  assert.equal(inactive.json<{ musica: { ativo: boolean } }>().musica.ativo, false);
-  let list = await app.inject({ method: 'GET', url: '/api/v1/musicas?ativo=false' });
-  assert.deepEqual(list.json<{ musicas: Array<{ titulo: string; ativo: boolean }> }>().musicas.map((music) => [music.titulo, music.ativo]), [['Inativa', false]]);
-  const edited = await app.inject({ method: 'PUT', url: `/api/v1/musicas/${inactiveId}`, payload: { titulo: 'Inativa', artista: 'B', ativo: true, versoes: [] } });
-  assert.equal(edited.json<{ musica: { ativo: boolean } }>().musica.ativo, true);
+  const inactive = await app.inject({ method: 'POST', url: '/api/v1/musicas', payload: { titulo: 'Inativa', artista: 'B', status: false } });
+  assert.equal(active.json<{ musica: { status: boolean } }>().musica.status, true);
+  const inactiveId = inactive.json<{ musica: { id: string; status: boolean } }>().musica.id;
+  assert.equal(inactive.json<{ musica: { status: boolean } }>().musica.status, false);
+  let list = await app.inject({ method: 'GET', url: '/api/v1/musicas?status=false' });
+  assert.deepEqual(list.json<{ musicas: Array<{ titulo: string; status: boolean }> }>().musicas.map((music) => [music.titulo, music.status]), [['Inativa', false]]);
+  const edited = await app.inject({ method: 'PUT', url: `/api/v1/musicas/${inactiveId}`, payload: { titulo: 'Inativa', artista: 'B', status: true, versoes: [] } });
+  assert.equal(edited.json<{ musica: { status: boolean } }>().musica.status, true);
   const reloaded = await app.inject({ method: 'GET', url: `/api/v1/musicas/${inactiveId}` });
-  assert.equal(reloaded.json<{ musica: { ativo: boolean } }>().musica.ativo, true);
-  list = await app.inject({ method: 'GET', url: '/api/v1/musicas?ativo=true' });
+  assert.equal(reloaded.json<{ musica: { status: boolean } }>().musica.status, true);
+  list = await app.inject({ method: 'GET', url: '/api/v1/musicas?status=true' });
   assert.equal(list.json<{ musicas: Array<{ titulo: string }> }>().musicas.some((music) => music.titulo === 'Inativa'), true);
   assert.equal(database.prepare('SELECT x_em_lives FROM musicas WHERE id=?').get(inactiveId).x_em_lives, 0);
   await app.close(); database.close();
@@ -67,7 +67,7 @@ test('F5 rejeita ordens duplicadas e remove mídia promovida quando o agregado f
   const staged = join(staging, `${stagingId}.mp3`);
   const { mkdirSync } = await import('node:fs'); mkdirSync(staging, { recursive: true }); writeFileSync(staged, Buffer.from('audio'));
   const response = await app.inject({ method: 'POST', url: '/api/v1/musicas', payload: {
-    titulo: 'Falha', artista: 'Artista', autoral: false, ativo: true, versoes: [
+    titulo: 'Falha', artista: 'Artista', autoral: false, status: true, versoes: [
       { id: crypto.randomUUID(), nome: 'A', ordem: 1, tipo: 'audio', referencia: 'A.mp3', stagingId, abertura: false },
       { id: crypto.randomUUID(), nome: 'B', ordem: 1, tipo: 'audio', referencia: 'B.mp3', abertura: true }
     ]
@@ -83,7 +83,7 @@ test('F5 serve mídia local por URL HTTP e não expõe caminho absoluto', async 
   const { root, database, app } = setup();
   const stagingId = crypto.randomUUID(); const staging = join(root, '.staging');
   const { mkdirSync } = await import('node:fs'); mkdirSync(staging, { recursive: true }); writeFileSync(join(staging, `${stagingId}.mp3`), Buffer.from('audio'));
-  const result = await app.inject({ method: 'POST', url: '/api/v1/musicas', payload: { titulo: 'Mídia', artista: 'A', autoral: false, ativo: true, versoes: [{ id: crypto.randomUUID(), nome: 'Arquivo', ordem: 1, tipo: 'audio', referencia: 'x.mp3', stagingId, abertura: false }] } });
+  const result = await app.inject({ method: 'POST', url: '/api/v1/musicas', payload: { titulo: 'Mídia', artista: 'A', autoral: false, status: true, versoes: [{ id: crypto.randomUUID(), nome: 'Arquivo', ordem: 1, tipo: 'audio', referencia: 'x.mp3', stagingId, abertura: false }] } });
   assert.equal(result.statusCode, 201);
   const version = result.json<{ musica: { versoes: Array<{ referencia: string }> } }>().musica.versoes[0];
   assert.match(version.referencia, /^\/media\/musicas\//); assert.equal(version.referencia.includes(root), false);

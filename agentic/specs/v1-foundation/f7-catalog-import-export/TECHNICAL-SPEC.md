@@ -4,7 +4,7 @@
 
 - `POST /api/importacao/previa` normaliza `versoes[]`/`fontes[]`, valida cada item e não grava.
 - `POST /api/importacao/confirmar` repete a validação e aplica em transação, salvo quando `partial=true` for explicitamente enviado.
-- `GET /api/exportacao` permanece compatível e exporta as referências como `fontes[]`.
+- `GET /api/exportacao` exporta o contrato V1 canônico com `status` booleano e `versoes[]`; `fontes[]` permanece apenas como entrada legada temporária.
 - `src/importer.mjs` mantém a identidade da música e faz o merge aditivo das linhas em `fontes_musica`.
 
 ## Frontend

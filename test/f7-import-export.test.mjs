@@ -18,3 +18,16 @@ test('F7 expõe a rota V1 de importação, prévia, confirmação explícita e e
   assert.match(service, /api\/importacao\/previa/);
   assert.match(service, /api\/importacao\/confirmar/);
 });
+
+test('F7 publica schema canônico sem aliases legados', () => {
+  const schema = JSON.parse(read('docs/import-format/musicas.schema.json'));
+  const musicProperties = schema.$defs.musica.properties;
+  const versionProperties = schema.$defs.versao.properties;
+  assert.deepEqual(musicProperties.status.type, 'boolean');
+  assert.equal('ativo' in musicProperties, false);
+  assert.equal('duracao' in musicProperties, false);
+  assert.equal('vibePrincipal' in musicProperties, false);
+  assert.equal('clima' in musicProperties, false);
+  assert.equal('principal' in versionProperties, false);
+  assert.equal(versionProperties.duracao.type.includes('integer'), true);
+});

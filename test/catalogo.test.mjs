@@ -39,6 +39,20 @@ test('importação de versões é aditiva, atualiza campos editáveis e nunca ap
   assert.equal(updatedVersion.referencia,'https://youtu.be/nova-versao-atualizada');
   db.close();
 });
+test('contrato V1 usa status booleano e duração dentro da versão',()=>{
+  const {db}=fixture();
+  confirmImport(db,{formato:'live-console.catalogo/v1',musicas:[{artista:'Raul',titulo:'Gita',status:false,genero:'Rock',origem:'Nacional',versoes:[{nome:'Original',tipo:'youtube',referencia:'https://youtu.be/gita',ordem:1,duracao:240}]}]});
+  const row=listMusic(db)[0];
+  assert.equal(row.statusV1,false);
+  assert.equal(listMusic(db,{activeOnly:true}).length,0);
+  assert.equal(row.genero_primario,'Rock');
+  assert.equal(row.fontes[0].duracao,240);
+  const exported=exportCatalog(db);
+  assert.equal(exported.musicas[0].status,false);
+  assert.equal(exported.musicas[0].versoes[0].duracao,240);
+  assert.equal('ativo' in exported.musicas[0],false);
+  db.close();
+});
 test('identidade da importação respeita musicaBase armazenada no SQLite',()=>{
   const {db}=fixture();
   createMusic(db,{artista:'Artista',titulo:'Versão acústica',musicaBase:'Obra original'});
