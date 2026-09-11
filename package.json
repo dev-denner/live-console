@@ -7,7 +7,7 @@
     "install:frontend": "npm --prefix frontend install --no-package-lock",
     "postinstall": "npm run install:frontend",
     "build:frontend": "npm --prefix frontend run build",
-    "build": "npm run build:frontend && tsc && cp -R migrations dist/migrations && cp -R docs dist/docs && cp -R legacy dist/legacy && cp index.html catalogo.html catalogo-manual.js lives.html blocos.html execucao.html dist/",
+    "build": "npm run build:frontend && tsc && rm -rf dist/migrations dist/docs dist/legacy && cp -R migrations dist/migrations && cp -R docs dist/docs && cp -R legacy dist/legacy && cp index.html catalogo.html catalogo-manual.js lives.html blocos.html execucao.html dist/",
     "start": "npm run build && node dist/server.js",
     "dev": "node --import tsx server.ts",
     "db:migrate": "npm run build && node dist/src/migrate.mjs",

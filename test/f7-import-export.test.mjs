@@ -9,6 +9,7 @@ test('F7 expõe a rota V1 de importação, prévia, confirmação explícita e e
   const navigation = read('frontend/src/app/layout/navigation.ts');
   const page = read('frontend/src/app/pages/importacao/importacao-page.component.html');
   const service = read('frontend/src/app/pages/importacao/importacao.service.ts');
+  const packageJson = JSON.parse(read('package.json'));
   assert.match(routes, /path: 'importacao'/);
   assert.match(navigation, /label: 'Importar'/);
   assert.match(page, /Validar prévia/);
@@ -17,6 +18,7 @@ test('F7 expõe a rota V1 de importação, prévia, confirmação explícita e e
   assert.match(page, /api\/exportacao/);
   assert.match(service, /api\/importacao\/previa/);
   assert.match(service, /api\/importacao\/confirmar/);
+  assert.match(packageJson.scripts.build, /rm -rf dist\/migrations dist\/docs dist\/legacy/);
 });
 
 test('F7 publica schema canônico sem aliases legados', () => {
