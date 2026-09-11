@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { isAbsolute, resolve } from 'node:path';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createMusic, listMusic, getMusic, updateMusic, transaction } from './db/repositories.js';
 
@@ -85,6 +85,36 @@ function comparableStoredMusic(item) {
   });
 }
 
+function lyricReference(storageRoot, value) {
+  if (typeof value !== 'string' || !value) return { path: null, found: false };
+  const normalized = value.replace(/\\/g, '/');
+  const candidates = [];
+  if (isAbsolute(value)) {
+    const relativePath = relative(storageRoot, resolve(value)).replace(/\\/g, '/');
+    if (relativePath && !relativePath.startsWith('../') && !relativePath.includes(':')) candidates.push(relativePath);
+  } else candidates.push(normalized);
+  for (const candidate of candidates) {
+    if (!candidate.startsWith('letras/') || candidate.includes('..') || candidate.startsWith('/') || candidate.includes(':')) continue;
+    if (existsSync(resolve(storageRoot, candidate))) return { path: candidate, found: true };
+  }
+  return { path: null, found: false };
+}
+
+function sanitizeLyrics(normalized, rawItem, storageRoot, report, index) {
+  const incomingLyrics = rawItem?.letraCaminho ?? rawItem?.letra_caminho ?? rawItem?.letra;
+  if (incomingLyrics === undefined) return normalized;
+  const resolvedLyrics = lyricReference(storageRoot, incomingLyrics);
+  if (resolvedLyrics.found) normalized.letra = resolvedLyrics.path;
+  else {
+    normalized.letra = null;
+    if (report) {
+      report.letrasNaoEncontradas.push({ index, caminho: incomingLyrics });
+      report.avisos.push({ index, mensagem: `Letra não encontrada: ${incomingLyrics}` });
+    }
+  }
+  return normalized;
+}
+
 function validateVersion(source, index, errors) {
   if (!source || typeof source !== 'object' || !source.nome || !permitted.has(source.tipo) || !source.referencia) {
     errors.push(`versão ${index + 1} inválida: nome, tipo e referência são obrigatórios`);
@@ -102,6 +132,8 @@ function validate(item, index, report, storageRoot) {
   if (!normalized || typeof normalized !== 'object' || !normalized.artista || !normalized.titulo) errors.push('artista e titulo são obrigatórios');
   if (item && item.fontes !== undefined && !Array.isArray(item.fontes)) errors.push('fontes deve ser uma lista');
   if (item && item.versoes !== undefined && !Array.isArray(item.versoes)) errors.push('versoes deve ser uma lista');
+
+  sanitizeLyrics(normalized, item, storageRoot, report, index);
 
   const seen = new Set();
   normalized.fontes.forEach((source, sourceIndex) => {
@@ -128,7 +160,7 @@ function reportShape() {
     novas: [], atualizaveis: [], identicas: [], conflitantes: [], rejeitadas: [],
     referenciasNovas: 0, referenciasExistentes: 0, versoesNovas: 0,
     versoesAtualizadas: 0, versoesExistentes: 0, arquivosEncontrados: [],
-    arquivosNaoEncontrados: [], caminhosLegados: []
+    arquivosNaoEncontrados: [], caminhosLegados: [], letrasNaoEncontradas: [], avisos: []
   };
   report.inserted = report.novas;
   report.updated = report.atualizaveis;
@@ -138,6 +170,8 @@ function reportShape() {
   report.legacyPaths = report.caminhosLegados;
   report.filesFound = report.arquivosEncontrados;
   report.filesMissing = report.arquivosNaoEncontrados;
+  report.lyricsMissing = report.letrasNaoEncontradas;
+  report.warnings = report.avisos;
   return report;
 }
 
@@ -243,7 +277,7 @@ export function confirmImport(db, payload, options = {}) {
     const current = new Map(listMusic(db).map(song => [identity(song), song]));
     for (const [index, rawItem] of payload.musicas.entries()) {
       if (rejected.has(index)) continue;
-      const item = normalizeMusic(rawItem);
+      const item = sanitizeLyrics(normalizeMusic(rawItem), rawItem, options.storageRoot ?? process.cwd());
       const prior = current.get(identity(item)) ?? listMusic(db).find(song => identity(song) === identity(item));
       let id;
       if (prior) {

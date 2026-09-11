@@ -33,9 +33,11 @@ test('F5 cria, edita e round-tripa música, Markdown e versões sem alterar xEmL
   const edited = { ...payload, id: music.id, titulo: 'Canção F5 editada', letraMarkdown: '## Nova letra' };
   const updated = await app.inject({ method: 'PUT', url: `/api/v1/musicas/${music.id}`, payload: edited });
   assert.equal(updated.statusCode, 200);
-  assert.equal(readFileSync(lyricsPath, 'utf8'), '## Nova letra');
+  const editedLyricsPath = updated.json<{ musica: { letraCaminho: string } }>().musica.letraCaminho;
+  assert.notEqual(editedLyricsPath, music.letraCaminho);
+  assert.equal(readFileSync(join(root, editedLyricsPath), 'utf8'), '## Nova letra');
   assert.equal(getMusic(database, music.id).x_em_lives, 0);
-  unlinkSync(lyricsPath);
+  unlinkSync(join(root, editedLyricsPath));
   const missing = await app.inject({ method: 'GET', url: `/api/v1/musicas/${music.id}` });
   assert.match(missing.json<{ musica: { letraAviso: string } }>().musica.letraAviso, /não foi encontrada/);
   await app.close(); database.close();
@@ -76,6 +78,26 @@ test('F5 edita mídia local sem reenviar referenciaRelativa e preserva o agregad
   assert.ok(after.versoes.find((version) => version.tipo === 'video')?.referenciaRelativa);
   assert.equal(existsSync(join(root, '.staging', `${newStagingId}.mp3`)), false);
   assert.equal((await app.inject({ method: 'GET', url: '/legacy' })).statusCode, 200);
+  await app.close(); database.close();
+});
+
+test('F5 trata caminho de letra ausente sem criar arquivo e permite recriar', async () => {
+  const { root, database, app } = setup();
+  const created = await app.inject({ method: 'POST', url: '/api/v1/musicas', payload: { titulo: 'Letra ausente', artista: 'Artista F5', letraMarkdown: 'letra original', versoes: [] } });
+  const music = created.json<{ musica: { id: string; letraCaminho: string } }>().musica;
+  const originalPath = join(root, music.letraCaminho); unlinkSync(originalPath);
+  const missing = await app.inject({ method: 'GET', url: `/api/v1/musicas/${music.id}` });
+  const missingView = missing.json<{ musica: { letraEncontrada: boolean; letraAviso: string; letraMarkdown: null; letraCaminho: string } }>().musica;
+  assert.equal(missingView.letraEncontrada, false); assert.match(missingView.letraAviso, /não foi encontrada/);
+  const metadataOnly = await app.inject({ method: 'PUT', url: `/api/v1/musicas/${music.id}`, payload: { id: music.id, titulo: 'Letra ausente editada', artista: 'Artista F5', versoes: [] } });
+  assert.equal(metadataOnly.statusCode, 200); assert.equal(getMusic(database, music.id).letra_caminho, null); assert.equal(readdirSync(join(root, 'letras')).length, 0);
+  const edited = await app.inject({ method: 'PUT', url: `/api/v1/musicas/${music.id}`, payload: { id: music.id, titulo: 'Letra ausente editada', artista: 'Artista F5', letraMarkdown: 'nova letra explícita', versoes: [] } });
+  assert.equal(edited.statusCode, 200); const editedMusic = edited.json<{ musica: { letraCaminho: string; letraEncontrada: boolean } }>().musica; assert.equal(editedMusic.letraEncontrada, true); assert.notEqual(editedMusic.letraCaminho, music.letraCaminho); assert.equal(readFileSync(join(root, editedMusic.letraCaminho), 'utf8'), 'nova letra explícita');
+  const absolute = await app.inject({ method: 'PUT', url: `/api/v1/musicas/${music.id}`, payload: { id: music.id, titulo: 'Letra ausente editada', artista: 'Artista F5', letraCaminho: '/tmp/nao-persistir.md', versoes: [] } });
+  assert.equal(absolute.statusCode, 200); assert.equal(getMusic(database, music.id).letra_caminho, editedMusic.letraCaminho); assert.equal((await app.inject({ method: 'GET', url: '/legacy' })).statusCode, 200);
+  const stagingId = crypto.randomUUID(); mkdirSync(join(root, '.staging'), { recursive: true }); writeFileSync(join(root, '.staging', `${stagingId}.md`), 'letra por upload explícito');
+  const uploaded = await app.inject({ method: 'PUT', url: `/api/v1/musicas/${music.id}`, payload: { id: music.id, titulo: 'Letra ausente editada', artista: 'Artista F5', letraStagingId: stagingId, versoes: [] } });
+  assert.equal(uploaded.statusCode, 200); const uploadedMusic = uploaded.json<{ musica: { letraCaminho: string } }>().musica; assert.equal(readFileSync(join(root, uploadedMusic.letraCaminho), 'utf8'), 'letra por upload explícito'); assert.equal(existsSync(join(root, '.staging', `${stagingId}.md`)), false); assert.ok(readdirSync(join(root, 'letras')).every((name) => readFileSync(join(root, 'letras', name), 'utf8').length > 0));
   await app.close(); database.close();
 });
 

@@ -84,6 +84,44 @@ Status: implementação validada localmente; PR draft separado, sem merge.
 - Navegador com banco/storage temporários: criação ativa e edição/reabertura foram exercitadas; a cobertura API confirmou criação inativa, alternância e filtros.
 - `/legacy` não foi alterado e a rota continua separada da V1.
 
+## Correção complementar — caminhos de letra inexistentes
+
+### Causa
+
+- O importador aceitava `letraCaminho` sem verificar o storage.
+- O detalhe V1 retornava um caminho ausente, e o PUT tentava validá-lo novamente mesmo sem alteração da letra.
+- A textarea também era enviada como conteúdo em todo salvamento, o que poderia criar arquivo vazio sem ação explícita.
+
+### Correção
+
+- O importador agora aceita somente referência relativa segura ou referência absoluta que resolva para arquivo existente no storage; caminhos ausentes são removidos e relatados em `avisos`/`letrasNaoEncontradas`.
+- A leitura V1 expõe `letraEncontrada` e `letraAviso` sem alterar o contrato de escrita.
+- O PUT sanitiza a associação anterior ausente, permite salvar metadados sem criar arquivo e cria Markdown gerenciado novo somente quando o conteúdo é alterado.
+- Upload explícito de letra usa staging, valida `.md`/`.txt` e tamanho, promove para `storage/letras/` no salvamento e remove staging em sucesso/erro.
+- O frontend mantém `letraAlterada` fora do contrato e envia conteúdo somente após edição explícita.
+
+### Validação
+
+- `npm test` — 46/46 testes passaram.
+- `npm run typecheck` — passou.
+- `npm run lint` — passou.
+- `npm run build` — passou; bundle servido em `/v1/main-TKBGSKW6.js`.
+- `git diff --check` — passou.
+
+### Navegador
+
+- Rota: `http://127.0.0.1:8789/v1/catalogo`, viewport `1280x577`, banco/storage temporários.
+- Música com caminho ausente foi aberta; o aviso acessível foi renderizado sem bloquear o diálogo.
+- Salvamento de metadados sem alteração da letra fechou o diálogo e removeu a associação sem criar arquivo.
+- Edição explícita da textarea criou nova associação Markdown e foi confirmada por GET após reabertura.
+- `/legacy` foi aberto no mesmo servidor e permaneceu funcional.
+- O fluxo de upload explícito foi coberto por teste API com staging e confirmação de arquivo não vazio; a fixture visual usou edição textual.
+
+### Riscos e pendências
+
+- Arquivos antigos válidos não são apagados ao criar uma nova versão Markdown, preservando recuperação e evitando remoção automática.
+- Caminhos absolutos fora do storage são descartados; não há busca arbitrária no computador.
+
 ## Correção complementar — edição de mídia local
 
 ### Causa

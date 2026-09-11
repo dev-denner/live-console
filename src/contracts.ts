@@ -45,7 +45,7 @@ export const musicRegistrationSchema = z.object({
   id: z.string().uuid().optional(), titulo: z.string().trim().min(1), artista: z.string().trim().min(1),
   genero: z.string().trim().nullable().optional(), origem: z.string().trim().nullable().optional(),
   observacoes: z.string().nullable().optional(), autoral: z.boolean().default(false), status: z.boolean().default(true),
-  letraMarkdown: z.string().nullable().optional(), letraCaminho: z.string().nullable().optional(),
+  letraMarkdown: z.string().nullable().optional(), letraCaminho: z.string().nullable().optional(), letraStagingId: z.string().uuid().optional(),
   versoes: z.array(musicRegistrationVersionSchema).default([])
 }).strict();
 export type MusicRegistrationInput = z.infer<typeof musicRegistrationSchema>;
