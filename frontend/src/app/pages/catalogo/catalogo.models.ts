@@ -12,7 +12,7 @@ export interface CatalogSource {
 }
 
 export interface MusicVersionDraft { id?: string; nome: string; ordem: number; tipo: 'youtube' | 'audio' | 'video'; referencia: string; referenciaRelativa?: string; stagingId?: string; duracao: number | null; abertura: boolean; }
-export interface MusicRegistration { id?: string; titulo: string; artista: string; genero: string | null; origem: string | null; observacoes: string | null; autoral: boolean; status: boolean; xEmLives: number; letraMarkdown: string | null; letraCaminho?: string | null; letraAviso?: string | null; versoes: MusicVersionDraft[]; }
+export interface MusicRegistration { id?: string; titulo: string; artista: string; genero: string | null; origem: string | null; observacoes: string | null; autoral: boolean; status: boolean; xEmLives: number; letraMarkdown: string | null; letraCaminho?: string | null; letraEncontrada?: boolean; letraAviso?: string | null; letraAlterada?: boolean; letraStagingId?: string; versoes: MusicVersionDraft[]; }
 
 export interface CatalogMusic {
   id: string;

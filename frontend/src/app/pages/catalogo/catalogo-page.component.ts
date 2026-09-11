@@ -49,10 +49,10 @@ export class CatalogoPageComponent {
   mediaLabel(song: CatalogMusic): string { const type = this.source(song)?.tipo; return type === 'youtube' ? 'YouTube' : type === 'audio' ? 'Áudio' : type === 'video' ? 'Vídeo' : 'Sem mídia'; }
   versionLabel(song: CatalogMusic): string { return this.source(song)?.nome ?? '—'; }
 
-  newMusic(): void { this.registrationError.set(null); this.registration.set({ titulo: '', artista: '', genero: null, origem: null, observacoes: null, autoral: false, status: true, xEmLives: 0, letraMarkdown: '', versoes: [] }); setTimeout(() => { const dialog = document.querySelector<HTMLElement>('.music-dialog'); if (dialog) { dialog.scrollTop = 0; dialog.focus(); } }, 0); }
-  editMusic(song: CatalogMusic): void { this.registrationError.set(null); this.service.getRegistration(song.id).subscribe({ next: (music) => this.registration.set(music), error: (error: ApiError) => this.registrationError.set(error.message) }); }
-  closeRegistration(): void { const staged = this.registration()?.versoes.filter((version) => version.stagingId).map((version) => version.stagingId as string) ?? []; staged.forEach((id) => this.service.cancelStaging(id).subscribe()); this.registration.set(null); this.versionDraft.set(null); this.registrationError.set(null); }
-  updateRegistration<K extends keyof MusicRegistration>(key: K, value: MusicRegistration[K]): void { this.registration.update((current) => current ? { ...current, [key]: value } : current); }
+  newMusic(): void { this.registrationError.set(null); this.registration.set({ titulo: '', artista: '', genero: null, origem: null, observacoes: null, autoral: false, status: true, xEmLives: 0, letraMarkdown: null, letraAlterada: false, versoes: [] }); setTimeout(() => { const dialog = document.querySelector<HTMLElement>('.music-dialog'); if (dialog) { dialog.scrollTop = 0; dialog.focus(); } }, 0); }
+  editMusic(song: CatalogMusic): void { this.registrationError.set(null); this.service.getRegistration(song.id).subscribe({ next: (music) => { this.registration.set(music); setTimeout(() => { const dialog = document.querySelector<HTMLElement>('.music-dialog'); if (dialog) { dialog.scrollTop = 0; dialog.focus(); } }, 0); }, error: (error: ApiError) => this.registrationError.set(error.message) }); }
+  closeRegistration(): void { const registration = this.registration(); const staged = registration?.versoes.filter((version) => version.stagingId).map((version) => version.stagingId as string) ?? []; staged.forEach((id) => this.service.cancelStaging(id).subscribe()); if (registration?.letraStagingId) this.service.cancelStaging(registration.letraStagingId).subscribe(); this.registration.set(null); this.versionDraft.set(null); this.registrationError.set(null); }
+  updateRegistration<K extends keyof MusicRegistration>(key: K, value: MusicRegistration[K]): void { this.registration.update((current) => current ? { ...current, [key]: value, ...(key === 'letraMarkdown' ? { letraAlterada: true } : {}) } : current); }
   saveRegistration(): void {
     const current = this.registration(); if (!current || !current.titulo.trim() || !current.artista.trim()) { this.registrationError.set('Título e artista são obrigatórios.'); return; }
     this.registrationError.set(null); this.service.saveRegistration(current).subscribe({ next: () => { this.closeRegistration(); this.load(); }, error: (error: ApiError) => this.registrationError.set(error.message) });
@@ -80,5 +80,9 @@ export class CatalogoPageComponent {
   uploadVersion(event: Event): void {
     const file = (event.target as HTMLInputElement).files?.[0]; const version = this.versionDraft(); if (!file || !version || version.tipo === 'youtube') return;
     this.uploadState.set('Enviando para staging…'); this.service.stage(version.tipo, file).subscribe({ next: (result) => { this.versionDraft.update((current) => current ? { ...current, stagingId: result.stagingId, referencia: file.name } : current); this.uploadState.set('Upload pronto; será promovido ao salvar.'); }, error: (error: ApiError) => this.uploadState.set(error.message) });
+  }
+  uploadLyrics(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0]; if (!file) return;
+    this.uploadState.set('Enviando letra para staging…'); this.service.stage('letras', file).subscribe({ next: (result) => { this.registration.update((current) => current ? { ...current, letraStagingId: result.stagingId, letraMarkdown: null, letraAlterada: false } : current); this.uploadState.set('Letra pronta; será promovida ao salvar.'); }, error: (error: ApiError) => this.uploadState.set(error.message) });
   }
 }

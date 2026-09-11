@@ -24,16 +24,18 @@ export class CatalogoService {
     });
   }
 
-  getRegistration(id: string): Observable<MusicRegistration> { return this.api.get(`/api/v1/musicas/${id}`, (payload) => { const music = (payload as { musica: MusicRegistration }).musica; return { ...music, versoes: music.versoes.map((version) => version.tipo === 'youtube' ? version : { ...version, referencia: version.referenciaRelativa ?? version.referencia }) }; }); }
+  getRegistration(id: string): Observable<MusicRegistration> { return this.api.get(`/api/v1/musicas/${id}`, (payload) => { const music = (payload as { musica: MusicRegistration }).musica; return { ...music, letraAlterada: false, versoes: music.versoes.map((version) => version.tipo === 'youtube' ? version : { ...version, referencia: version.referenciaRelativa ?? version.referencia }) }; }); }
   saveRegistration(registration: MusicRegistration): Observable<MusicRegistration> {
     const url = registration.id ? `/api/v1/musicas/${registration.id}` : '/api/v1/musicas';
     const parse = (payload: unknown) => (payload as { musica: MusicRegistration }).musica;
-    const { xEmLives: _xEmLives, letraAviso: _letraAviso, ...music } = registration;
+    const { xEmLives: _xEmLives, letraAviso: _letraAviso, letraEncontrada: _letraEncontrada, letraAlterada: _letraAlterada, letraMarkdown: _letraMarkdown, letraCaminho: _letraCaminho, ...music } = registration;
     const payload = { ...music, versoes: registration.versoes.map((version) => this.versionWritePayload(version)) };
+    if (registration.letraAlterada) Object.assign(payload, { letraMarkdown: registration.letraMarkdown && registration.letraMarkdown.length > 0 ? registration.letraMarkdown : null });
+    if (registration.letraStagingId) Object.assign(payload, { letraStagingId: registration.letraStagingId });
     return registration.id ? this.api.put(url, payload, parse) : this.api.post(url, payload, parse);
   }
   deleteRegistration(id: string): Observable<unknown> { return this.api.delete(`/api/v1/musicas/${id}`); }
-  stage(kind: 'audio' | 'video', file: File): Observable<{ stagingId: string }> { const body = new FormData(); body.append('file', file, file.name); return this.api.post(`/api/media/staging?kind=${kind}`, body); }
+  stage(kind: 'audio' | 'video' | 'letras', file: File): Observable<{ stagingId: string }> { const body = new FormData(); body.append('file', file, file.name); return this.api.post(`/api/media/staging?kind=${kind}`, body); }
   cancelStaging(stagingId: string): Observable<unknown> { return this.api.delete(`/api/media/staging/${stagingId}`); }
 
   private versionWritePayload(version: MusicVersionDraft) {

@@ -53,13 +53,13 @@ function mediaUrl(relative: string): string { const [folder, ...rest] = relative
 function lyricsRelativePath(path: string | null | undefined): string | null {
   if (path === null || path === undefined) return null;
   const normalized = path.replace(/\\/g, '/');
-  if (!normalized.startsWith('letras/') || normalized.includes('..') || normalized.startsWith('/') || normalized.includes(':')) throw badRequest('Caminho de letra inválido');
+  if (!normalized.startsWith('letras/') || normalized.includes('..') || normalized.startsWith('/') || normalized.includes(':')) return null;
   return normalized;
 }
 function registrationView(music: any, lyrics: string | null, warning: string | null) {
   return { id: music.id, titulo: music.titulo, artista: music.artista, genero: music.genero_primario, origem: music.origem,
     observacoes: music.observacoes, autoral: music.autoral, status: Boolean(music.statusV1), xEmLives: music.x_em_lives,
-    letraCaminho: music.letra_caminho, letraMarkdown: lyrics, letraAviso: warning,
+    letraCaminho: music.letra_caminho, letraEncontrada: Boolean(music.letra_caminho && warning === null && lyrics !== null), letraMarkdown: lyrics, letraAviso: warning,
     versoes: music.fontes.map((source: any) => ({ id: source.id, nome: source.nome, ordem: source.ordem, tipo: source.tipo,
       referencia: source.tipo === 'youtube' ? source.referencia : mediaUrl(source.referencia), ...(source.tipo === 'youtube' ? {} : { referenciaRelativa: source.referencia }),
       duracao: source.duracao, abertura: source.abertura })) };
@@ -98,8 +98,21 @@ function localRegistrationReference(storageRoot: string, type: 'audio' | 'video'
   return file;
 }
 
-async function cleanupStaging(storageRoot: string, versions: Array<{ stagingId?: string | undefined }>): Promise<void> {
+async function cleanupStaging(storageRoot: string, versions: Array<{ stagingId?: string | undefined }>, lyricStagingId?: string): Promise<void> {
   for (const version of versions) if (version.stagingId) for (const extension of [...(registrationUploadExtensions.audio ?? new Set()), ...(registrationUploadExtensions.video ?? new Set())]) await unlink(join(storageRoot, '.staging', `${version.stagingId}${extension}`)).catch(() => undefined);
+  if (lyricStagingId) for (const extension of uploadExtensions.letras ?? new Set()) await unlink(join(storageRoot, '.staging', `${lyricStagingId}${extension}`)).catch(() => undefined);
+}
+
+async function promoteLyricsStaging(storageRoot: string, musicId: string, stagingId: string): Promise<{ path: string; content: string; target: string }> {
+  const extension = [...(uploadExtensions.letras ?? new Set())].find((candidate) => existsSync(join(storageRoot, '.staging', `${stagingId}${candidate}`)));
+  if (!extension) throw badRequest('Upload de letra staged não encontrado');
+  const content = await readFile(join(storageRoot, '.staging', `${stagingId}${extension}`), 'utf8');
+  if (!content.length) throw badRequest('Arquivo de letra vazio');
+  const path = `letras/${musicId}-${randomUUID()}.md`;
+  const target = join(storageRoot, path);
+  await mkdir(dirname(target), { recursive: true }); await writeFile(target, content, 'utf8');
+  await unlink(join(storageRoot, '.staging', `${stagingId}${extension}`));
+  return { path, content, target };
 }
 
 function sourceFileForLegacyReference(reference: string): string {
@@ -154,7 +167,7 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
   app.get('/api/health', async () => ({ ok: true }));
   app.post('/api/media/staging', async (request, reply) => {
     const kind = String((request.query as { kind?: string }).kind ?? '');
-    const accepted = registrationUploadExtensions[kind];
+    const accepted = uploadExtensions[kind];
     if (!accepted) throw badRequest('Tipo de mídia inválido');
     const file = await request.file();
     if (!file) throw badRequest('Arquivo ausente');
@@ -185,7 +198,9 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
     const music = getMusic(database, id);
     if (!music) return reply.code(404).send({ error: 'Não encontrada' });
     let lyrics: string | null = null; let warning: string | null = null;
-    if (music.letra_caminho) { try { lyrics = await readFile(join(storageRoot, music.letra_caminho), 'utf8'); } catch { warning = 'A letra registrada não foi encontrada. Você pode recriá-la ao salvar.'; } }
+    const storedLyricsPath = lyricsRelativePath(music.letra_caminho);
+    if (storedLyricsPath) { try { lyrics = await readFile(join(storageRoot, storedLyricsPath), 'utf8'); } catch { warning = 'A letra registrada não foi encontrada. Você pode recriá-la ao salvar.'; } }
+    else if (music.letra_caminho) warning = 'A letra registrada usa um caminho inválido. Você pode recriá-la ao salvar.';
     return { musica: registrationView(music, lyrics, warning) };
   });
   app.post('/api/v1/musicas', async (request, reply) => {
@@ -199,6 +214,7 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
     let lyricsPath: string | null = null;
     let lyricsTarget: string | null = null;
     let lyricsCreated = false;
+    let lyricsContent: string | null = null;
     try {
       const finalizedVersions = [];
       for (const version of versions) {
@@ -218,20 +234,25 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
         }
         finalizedVersions.push({ ...version, referencia: reference });
       }
-      lyricsPath = parsed.data.letraMarkdown !== undefined && parsed.data.letraMarkdown !== null ? (requestedLyricsPath ?? `letras/${id}.md`) : null;
-      if (parsed.data.letraMarkdown !== undefined && parsed.data.letraMarkdown !== null && lyricsPath) {
+      if (parsed.data.letraStagingId) {
+        const promotedLyrics = await promoteLyricsStaging(storageRoot, id, parsed.data.letraStagingId);
+        lyricsPath = promotedLyrics.path; lyricsTarget = promotedLyrics.target; lyricsContent = promotedLyrics.content; lyricsCreated = true;
+      } else if (typeof parsed.data.letraMarkdown === 'string' && parsed.data.letraMarkdown.length > 0) {
+        lyricsContent = parsed.data.letraMarkdown; lyricsPath = requestedLyricsPath ?? `letras/${id}.md`;
+      }
+      if (lyricsContent !== null && lyricsPath && !lyricsCreated) {
         lyricsTarget = join(storageRoot, lyricsPath); await mkdir(dirname(lyricsTarget), { recursive: true });
-        const temporary = `${lyricsTarget}.${randomUUID()}.tmp`; await writeFile(temporary, parsed.data.letraMarkdown, 'utf8'); await rename(temporary, lyricsTarget); lyricsCreated = true;
+        const temporary = `${lyricsTarget}.${randomUUID()}.tmp`; await writeFile(temporary, lyricsContent, 'utf8'); await rename(temporary, lyricsTarget); lyricsCreated = true;
       }
       const savedId = saveMusicRegistration(database, { ...parsed.data, id, letraCaminho: lyricsPath, versoes: finalizedVersions });
-      return reply.code(201).send({ musica: registrationView(getMusic(database, savedId), parsed.data.letraMarkdown ?? null, null) });
+      return reply.code(201).send({ musica: registrationView(getMusic(database, savedId), lyricsContent, null) });
     } catch (error) {
       for (const path of promoted) await unlink(path).catch(() => undefined);
       if (lyricsCreated && lyricsTarget) await unlink(lyricsTarget).catch(() => undefined);
       if ((error as Error).message === 'Ordens duplicadas' || (error as Error).message.includes('ordens devem')) return reply.code(400).send({ error: (error as Error).message });
       throw error;
     } finally {
-      await cleanupStaging(storageRoot, parsed.data.versoes);
+      await cleanupStaging(storageRoot, parsed.data.versoes, parsed.data.letraStagingId);
     }
   });
   app.put('/api/v1/musicas/:id', async (request, reply) => {
@@ -240,13 +261,15 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
     if (!parsed.success) throw badRequest(messageForValidation(parsed.error));
     const previous = getMusic(database, id);
     if (!previous) return reply.code(404).send({ error: 'Não encontrada' });
-    const requestedLyricsPath = lyricsRelativePath(parsed.data.letraCaminho);
     const versions = parsed.data.versoes.map((version) => ({ ...version, id: version.id ?? randomUUID() }));
     const promoted: string[] = [];
-    const previousLyrics = previous.letra_caminho ? join(storageRoot, previous.letra_caminho) : null;
+    const storedPreviousLyricsPath = lyricsRelativePath(previous.letra_caminho);
+    const previousLyricsPath = storedPreviousLyricsPath && existsSync(join(storageRoot, storedPreviousLyricsPath)) ? storedPreviousLyricsPath : null;
+    const previousLyrics = previousLyricsPath ? join(storageRoot, previousLyricsPath) : null;
     const previousLyricsBytes = previousLyrics && existsSync(previousLyrics) ? await readFile(previousLyrics) : null;
     let lyricsTarget: string | null = null;
     let lyricsChanged = false;
+    let lyricsContent: string | null = null;
     try {
       const finalizedVersions = [];
       for (const version of versions) {
@@ -259,21 +282,30 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
         } else if (version.tipo !== 'youtube') localRegistrationReference(storageRoot, version.tipo, version.referencia);
         finalizedVersions.push({ ...version, referencia: reference });
       }
-      const lyricsPath = parsed.data.letraMarkdown !== undefined && parsed.data.letraMarkdown !== null ? (requestedLyricsPath ?? previous.letra_caminho ?? `letras/${id}.md`) : parsed.data.letraMarkdown === null ? null : previous.letra_caminho;
-      if (parsed.data.letraMarkdown !== undefined && parsed.data.letraMarkdown !== null && lyricsPath) {
-        lyricsTarget = join(storageRoot, lyricsPath); await mkdir(dirname(lyricsTarget), { recursive: true }); const temporary = `${lyricsTarget}.${randomUUID()}.tmp`; await writeFile(temporary, parsed.data.letraMarkdown, 'utf8'); await rename(temporary, lyricsTarget); lyricsChanged = true;
+      let lyricsPath: string | null = null;
+      if (parsed.data.letraStagingId) {
+        const promotedLyrics = await promoteLyricsStaging(storageRoot, id, parsed.data.letraStagingId);
+        lyricsContent = promotedLyrics.content; lyricsTarget = promotedLyrics.target; lyricsPath = promotedLyrics.path; lyricsChanged = true;
+      } else if (typeof parsed.data.letraMarkdown === 'string' && parsed.data.letraMarkdown.length > 0) lyricsContent = parsed.data.letraMarkdown;
+      const hasLyricsContent = lyricsContent !== null;
+      if (hasLyricsContent && !lyricsPath) lyricsPath = `letras/${id}-${randomUUID()}.md`;
+      if (!hasLyricsContent) lyricsPath = parsed.data.letraMarkdown === null || parsed.data.letraMarkdown === '' ? null : previousLyricsPath;
+      if (hasLyricsContent && lyricsPath) {
+        if (!lyricsTarget) { lyricsTarget = join(storageRoot, lyricsPath); await mkdir(dirname(lyricsTarget), { recursive: true }); const temporary = `${lyricsTarget}.${randomUUID()}.tmp`; await writeFile(temporary, lyricsContent as string, 'utf8'); await rename(temporary, lyricsTarget); }
       }
       const savedId = saveMusicRegistration(database, { ...parsed.data, id, letraCaminho: lyricsPath, versoes: finalizedVersions });
-      return reply.code(200).send({ musica: registrationView(getMusic(database, savedId), parsed.data.letraMarkdown !== undefined ? parsed.data.letraMarkdown : (lyricsTarget && existsSync(lyricsTarget) ? await readFile(lyricsTarget, 'utf8') : null), null) });
+      const savedLyricsPath = lyricsRelativePath(getMusic(database, savedId).letra_caminho);
+      const savedLyrics = savedLyricsPath && existsSync(join(storageRoot, savedLyricsPath)) ? await readFile(join(storageRoot, savedLyricsPath), 'utf8') : null;
+      return reply.code(200).send({ musica: registrationView(getMusic(database, savedId), savedLyrics, null) });
     } catch (error) {
       for (const path of promoted) await unlink(path).catch(() => undefined);
       if (lyricsChanged && lyricsTarget) {
-        if (previousLyricsBytes) await writeFile(lyricsTarget, previousLyricsBytes);
+        if (lyricsTarget === previousLyrics && previousLyricsBytes) await writeFile(lyricsTarget, previousLyricsBytes);
         else await unlink(lyricsTarget).catch(() => undefined);
       }
       if ((error as Error).message === 'Ordens duplicadas' || (error as Error).message.includes('ordens devem')) return reply.code(400).send({ error: (error as Error).message });
       throw error;
-    } finally { await cleanupStaging(storageRoot, parsed.data.versoes); }
+    } finally { await cleanupStaging(storageRoot, parsed.data.versoes, parsed.data.letraStagingId); }
   });
   app.delete('/api/v1/musicas/:id', async (request, reply) => {
     const id = (request.params as { id: string }).id;
