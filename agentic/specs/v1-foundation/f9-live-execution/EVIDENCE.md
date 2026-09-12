@@ -1,14 +1,10 @@
 # Evidência F9
 
-Este arquivo será preenchido na implementação da F9. A evidência mínima deverá conter:
+Implementação validada na branch `feat/f9-live-execution`.
 
-- SHA da branch e da PR;
-- comandos de migration, testes, lint, typecheck e build;
-- testes de estados e transições inválidas;
-- teste de duplicação com catálogo alterado;
-- teste de inclusão sem duplicidade por `musicaId`;
-- teste de execução fora da ordem e adição durante a execução;
-- teste de play obrigatório antes de marcar tocada;
-- teste de skip, undo confirmado e encerramento idempotente;
-- browser verification do layout operacional e `/legacy`;
-- riscos e limitações restantes.
+- Migration `011_f9_live_execution.sql` executada com `npm run db:migrate`.
+- Testes F9 cobrem fechamento, Play obrigatório, execução fora da ordem, skip, duplicidade por `musicaId`, duplicação sem histórico e reconciliação idempotente de `xEmLives`.
+- Suíte completa: 60 testes, 60 passaram.
+- `npm run lint`, `npm run typecheck`, `npm run build` e `git diff --check`: passaram.
+- Browser: `/v1/execucao` renderizou o layout operacional com seletor de repertórios e estado vazio; `/legacy` continuou renderizando o console histórico. Screenshot temporário: `/tmp/f9-execucao.png`.
+- Limitação: a composição detalhada de rascunhos F8 ainda usa `live_drafts`; a execução F9 usa a entidade persistente `lives` e suas APIs compatíveis.

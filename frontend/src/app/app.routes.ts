@@ -5,6 +5,7 @@ import { CatalogoPageComponent } from './pages/catalogo/catalogo-page.component'
 import { BlocosPageComponent } from './pages/blocos/blocos-page.component';
 import { ImportacaoPageComponent } from './pages/importacao/importacao-page.component';
 import { LiveDraftPageComponent } from './pages/lives/live-draft-page.component';
+import { ExecucaoPageComponent } from './pages/execucao/execucao-page.component';
 
 export const routes: Routes = [{
   path: '',
@@ -16,6 +17,7 @@ export const routes: Routes = [{
     { path: 'lives/:id', component: LiveDraftPageComponent },
     { path: 'blocos', component: BlocosPageComponent },
     { path: 'importacao', component: ImportacaoPageComponent },
-    { path: 'execucao', component: PlaceholderPageComponent, data: { title: 'Execução', description: 'A futura área de condução e histórico será construída em uma feature própria.' } }
+    { path: 'execucao', component: ExecucaoPageComponent },
+    { path: 'execucao/:id', component: ExecucaoPageComponent }
   ]
 }];
