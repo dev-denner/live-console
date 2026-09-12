@@ -1,6 +1,6 @@
 # Evidência F9
 
-Correção de revisão em `feat/f9-live-execution`, PR [#51](https://github.com/dev-denner/live-console/pull/51). O SHA será registrado no commit de entrega.
+Correção de revisão em `feat/f9-live-execution`, SHA `8a1957480c63564efc1ee6e4cdb569019e1e252f`, PR [#51](https://github.com/dev-denner/live-console/pull/51).
 
 - Migration `011_f9_live_execution.sql` executada com `npm run db:migrate`.
 - Arquivos alterados: `src/db/repositories.ts`, `server.ts`, `test/f9-live-execution.test.ts`, tela Angular de execução e esta especificação.
