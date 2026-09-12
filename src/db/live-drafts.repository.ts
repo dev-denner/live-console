@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { getBlock, getMusic, listBlocks, listMusic } from './repositories.js';
+import { generateAutomaticComposition } from '../automatic-live-selection.mjs';
 
 const now = () => new Date().toISOString();
 const validSource = (source: any, storageRoot: string) => {
@@ -55,6 +56,12 @@ function validate(db: any, storageRoot: string, composition: any) {
 }
 export function listLiveDrafts(db: any) { return db.prepare("SELECT id,nome,status,criada_em,atualizada_em FROM live_drafts WHERE status='draft' ORDER BY atualizada_em DESC").all(); }
 export function createLiveDraft(db: any, input: {id?:string;nome?:string}={}) { const id=input.id??randomUUID(),at=now(); db.prepare("INSERT INTO live_drafts(id,nome,status,composicao_json,criada_em,atualizada_em) VALUES(?,?,?,?,?,?)").run(id,input.nome?.trim()||'Nova live','draft',JSON.stringify({abertura:null,segmentos:[]}),at,at); return id; }
-export function getLiveDraft(db: any,id: string,storageRoot: string) { const row=db.prepare("SELECT * FROM live_drafts WHERE id=? AND status='draft'").get(id); return row?{id:row.id,nome:row.nome,status:row.status,composicao:JSON.parse(row.composicao_json),criadaEm:row.criada_em,atualizadaEm:row.atualizada_em,opcoes:liveDraftOptions(db,storageRoot)}:null; }
+export function getLiveDraft(db: any,id: string,storageRoot: string) { const row=db.prepare("SELECT * FROM live_drafts WHERE id=? AND status='draft'").get(id); return row?{id:row.id,nome:row.nome,status:row.status,composicao:JSON.parse(row.composicao_json),geracao:row.geracao_json?JSON.parse(row.geracao_json):null,criadaEm:row.criada_em,atualizadaEm:row.atualizada_em,opcoes:liveDraftOptions(db,storageRoot)}:null; }
 export function updateLiveDraft(db: any,id: string,input: any,storageRoot: string) { const row=db.prepare("SELECT * FROM live_drafts WHERE id=? AND status='draft'").get(id); if(!row)return null; const composition=validate(db,storageRoot,input.composicao),at=now(); db.prepare('UPDATE live_drafts SET nome=?,composicao_json=?,atualizada_em=? WHERE id=?').run(input.nome?.trim()||row.nome,JSON.stringify(composition),at,id); return getLiveDraft(db,id,storageRoot); }
 export function removeLiveDraft(db: any,id: string) { return db.prepare("DELETE FROM live_drafts WHERE id=? AND status='draft'").run(id).changes===1; }
+export function generateLiveDraft(db: any, storageRoot: string, input: any) {
+  const options=liveDraftOptions(db,storageRoot); const previousRows=db.prepare("SELECT id FROM lives WHERE status<>'rascunho' ORDER BY COALESCE(data,atualizada_em) DESC, atualizada_em DESC LIMIT 1").all(); const previousMusicIds=new Set<string>();
+  if(previousRows[0]) db.prepare("SELECT musica_id FROM execucao_itens_live WHERE live_id=? AND estado='tocada'").all(previousRows[0].id).forEach((row: any)=>previousMusicIds.add(row.musica_id));
+  const seed=input.seed ?? randomUUID(); const generationInput:any={openings:options.aberturas,blocks:options.blocos,songs:options.musicasSemBloco,openingId:input.aberturaId??null,quantidadeReferencia:input.quantidadeReferencia,autoraisDesejadas:input.autoraisDesejadas,previousMusicIds,seed}; const generated=generateAutomaticComposition(generationInput);
+  const id=createLiveDraft(db,{nome:'Nova live'}); const draft=updateLiveDraft(db,id,{nome:'Nova live',composicao:generated.composition},storageRoot); db.prepare('UPDATE live_drafts SET geracao_json=? WHERE id=?').run(JSON.stringify(generated.metadata),id); return {draft:getLiveDraft(db,id,storageRoot),metadata:generated.metadata};
+}
