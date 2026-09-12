@@ -67,3 +67,7 @@ A foundation só termina quando:
 - há PRs e evidências associadas às fases concluídas.
 
 A ordem e o conteúdo detalhado das fases podem ser ajustados por uma spec aprovada; este documento é o plano inicial, não autorização automática de implementação.
+
+### F9 — Execução de repertórios de lives
+
+Tratar repertório de live como entidade com múltiplos registros, fechamento imutável, duplicação segura e sessão operacional separada. A execução permite tocar fora da ordem planejada, adicionar músicas ao final, reordenar entre blocos, pular sem remover e registrar somente a ordem real. `Marcar tocada` exige `Play`; `xEmLives` só é reconciliado no encerramento idempotente. A spec completa está em `f9-live-execution/`.

@@ -1,0 +1,24 @@
+# Critérios de aceite — F9
+
+- [ ] É possível criar vários repertórios de live.
+- [ ] Rascunhos podem ser editados e salvos.
+- [ ] Fechar um repertório bloqueia edição estrutural.
+- [ ] Repertório fechado/executado pode ser duplicado como novo rascunho.
+- [ ] Duplicação omite e reporta músicas/blocos inexistentes.
+- [ ] A abertura permanece na posição zero.
+- [ ] Adição entra no final.
+- [ ] O catálogo de adição oculta músicas já presentes pelo `musicaId`.
+- [ ] A API rejeita duplicidade mesmo com requisição manual.
+- [ ] Durante execução nenhuma música é removida.
+- [ ] Música pode ser pulada sem ser removida.
+- [ ] Músicas podem ser adicionadas e reordenadas durante execução, inclusive entre blocos.
+- [ ] `Marcar tocada` só funciona após `Play`.
+- [ ] Música tocada fica inativa.
+- [ ] Desfazer tocada exige confirmação e deixa registro auditável.
+- [ ] Histórico final contém somente a ordem real de execução.
+- [ ] Horário real usa o instante do `Play`.
+- [ ] YouTube não recebe horário de término inventado.
+- [ ] `xEmLives` só é incrementado no encerramento.
+- [ ] Repetir encerramento não duplica `xEmLives`.
+- [ ] `/legacy` continua funcionando.
+- [ ] Testes unitários, integração, lint, typecheck, build e browser verification passam.
