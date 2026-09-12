@@ -88,3 +88,7 @@ Falhas não podem deixar contadores parcialmente incrementados.
 ## Compatibilidade
 
 Preservar `/legacy`, URLs e caminhos literais. O player deve usar a referência gravada no item, sem reconstruir links.
+
+## Integração F8.2
+
+`live_drafts` é a fonte de verdade enquanto a seleção automática está sendo montada. O endpoint `POST /api/live-drafts/:id/converter` faz a promoção transacional para `lives`: resolve cada `versaoId` contra o catálogo atual, preserva abertura, blocos, ordem e referências literais, cria os itens e remove o draft somente após sucesso. A partir daí `lives` é a fonte de verdade para editar, fechar e executar; não há recadastro manual nem cópia de histórico de execução.
