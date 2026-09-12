@@ -14,15 +14,23 @@ export function generateAutomaticComposition({ openings = [], blocks = [], songs
   const opening = chooseOpening(openings, { openingId, previousMusicIds, seed });
   const reserved = opening?.id ?? null;
   const units = [];
+  const occupied = new Set(reserved ? [reserved] : []);
   for (const block of blocks) {
+    // Blocks are atomic. The repository normally supplies valid blocks, but this
+    // boundary also protects direct callers from selecting a partial block.
+    if (!Array.isArray(block.itens) || block.itens.length === 0 || block.itens.some((item) => !item?.musicaId || !item.versaoId)) continue;
     const items = block.itens.filter((item) => item.musicaId !== reserved);
     if (!items.length) continue;
+    if (new Set(items.map((item) => item.musicaId)).size !== items.length || items.some((item) => occupied.has(item.musicaId))) continue;
+    items.forEach((item) => occupied.add(item.musicaId));
     units.push({ id:`bloco:${block.id}`, tipo:'bloco', itens:items, nome:block.nome, quantidade:items.length, autorais:items.filter((item) => item.autoral).length, xEmLives:items.reduce((sum, item) => sum + item.xEmLives, 0), musicaIds:items.map((item) => item.musicaId) });
   }
   for (const song of songs) {
     if (song.id === reserved) continue;
+    if (!song?.id || occupied.has(song.id)) continue;
     const version = song.versoes.find((item) => item.principal) ?? song.versoes[0];
     if (!version) continue;
+    occupied.add(song.id);
     units.push({ id:`musica:${song.id}`, tipo:'musica', musicaId:song.id, versaoId:version.id, titulo:song.titulo, artista:song.artista, musicaBase:song.musicaBase, duracao:version.duracao, xEmLives:song.xEmLives, quantidade:1, autorais:Number(song.autoral), musicaIds:[song.id] });
   }
   units.sort((a, b) => rank(seed, a.id) - rank(seed, b.id) || a.id.localeCompare(b.id));
