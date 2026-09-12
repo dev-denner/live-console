@@ -1,6 +1,6 @@
 # Evidência F9
 
-Implementação validada na branch `feat/f9-live-execution`.
+Implementação validada na branch `feat/f9-live-execution`, SHA `b083cf4` (`b083cf4867649e719443a30e056815256aea9736`), PR [#51](https://github.com/dev-denner/live-console/pull/51).
 
 - Migration `011_f9_live_execution.sql` executada com `npm run db:migrate`.
 - Testes F9 cobrem fechamento, Play obrigatório, execução fora da ordem, skip, duplicidade por `musicaId`, duplicação sem histórico e reconciliação idempotente de `xEmLives`.
