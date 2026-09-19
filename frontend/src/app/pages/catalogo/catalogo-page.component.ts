@@ -49,8 +49,27 @@ export class CatalogoPageComponent {
   mediaLabel(song: CatalogMusic): string { const type = this.source(song)?.tipo; return type === 'youtube' ? 'YouTube' : type === 'audio' ? 'Áudio' : type === 'video' ? 'Vídeo' : 'Sem mídia'; }
   versionLabel(song: CatalogMusic): string { return this.source(song)?.nome ?? '—'; }
 
-  newMusic(): void { this.registrationError.set(null); this.registration.set({ titulo: '', artista: '', genero: null, origem: null, observacoes: null, autoral: false, status: true, xEmLives: 0, letraMarkdown: null, letraAlterada: false, versoes: [] }); setTimeout(() => { const dialog = document.querySelector<HTMLElement>('.music-dialog'); if (dialog) { dialog.scrollTop = 0; dialog.focus(); } }, 0); }
-  editMusic(song: CatalogMusic): void { this.registrationError.set(null); this.service.getRegistration(song.id).subscribe({ next: (music) => { this.registration.set(music); setTimeout(() => { const dialog = document.querySelector<HTMLElement>('.music-dialog'); if (dialog) { dialog.scrollTop = 0; dialog.focus(); } }, 0); }, error: (error: ApiError) => this.registrationError.set(error.message) }); }
+  newMusic(): void { this.registrationError.set(null); this.registration.set({ titulo: '', artista: '', genero: null, origem: null, observacoes: null, autoral: false, status: true, xEmLives: 0, letraMarkdown: null, letraAlterada: false, versoes: [] }); this.focusPanel(); }
+  editMusic(song: CatalogMusic): void { this.registrationError.set(null); this.service.getRegistration(song.id).subscribe({ next: (music) => { this.registration.set(music); this.focusPanel(); }, error: (error: ApiError) => this.registrationError.set(error.message) }); }
+  duplicateMusic(): void {
+    const current = this.registration();
+    if (!current || !current.id) return;
+    this.registrationError.set(null);
+    this.registration.set({
+      ...current,
+      id: undefined,
+      titulo: `${current.titulo} (cópia)`,
+      xEmLives: 0,
+      letraAlterada: true,
+      letraStagingId: undefined,
+      letraCaminho: undefined,
+      letraEncontrada: undefined,
+      letraAviso: undefined,
+      versoes: current.versoes.map((version) => ({ ...version, id: undefined, stagingId: undefined }))
+    });
+    this.focusPanel();
+  }
+  private focusPanel(): void { setTimeout(() => { const panel = document.querySelector<HTMLElement>('.detail-panel .panel-body'); if (panel) panel.scrollTop = 0; }, 0); }
   closeRegistration(): void { const registration = this.registration(); const staged = registration?.versoes.filter((version) => version.stagingId).map((version) => version.stagingId as string) ?? []; staged.forEach((id) => this.service.cancelStaging(id).subscribe()); if (registration?.letraStagingId) this.service.cancelStaging(registration.letraStagingId).subscribe(); this.registration.set(null); this.versionDraft.set(null); this.registrationError.set(null); }
   updateRegistration<K extends keyof MusicRegistration>(key: K, value: MusicRegistration[K]): void { this.registration.update((current) => current ? { ...current, [key]: value, ...(key === 'letraMarkdown' ? { letraAlterada: true } : {}) } : current); }
   saveRegistration(): void {
