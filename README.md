@@ -1,6 +1,6 @@
 # Live Console
 
-Console legado em `/` e catálogo local em `/catalogo`. Requer Node.js **22.13.0 ou superior**, pois usa `node:sqlite`.
+Aplicação Angular em `/` e console legado baseado em JSON exclusivamente em `/legacy`. Requer Node.js **22.13.0 ou superior**, pois usa `node:sqlite`.
 
 ## Arquitetura
 
@@ -17,7 +17,7 @@ npm test
 
 `npm run dev` inicia o servidor TypeScript em modo observação. `npm run lint` usa o verificador do TypeScript; a suíte cobre tanto a compatibilidade legada quanto o contrato da nova aplicação Fastify.
 
-Abra `http://localhost:8787/` para o console legado e `http://localhost:8787/catalogo` para o catálogo. O banco é `data/live-console.sqlite` e é criado pelas migrations transacionais. Faça backup copiando esse arquivo com a aplicação parada e, ao mudar de computador, copie também `storage/`.
+Abra `http://localhost:8787/` para a aplicação principal; suas rotas são `/catalogo`, `/lives`, `/blocos`, `/importacao` e `/execucao`. O console compatível antigo fica em `http://localhost:8787/legacy`. Links antigos sob `/v1` redirecionam para a rota equivalente sem o prefixo. O banco é `data/live-console.sqlite` e é criado pelas migrations transacionais. Faça backup copiando esse arquivo com a aplicação parada e, ao mudar de computador, copie também `storage/`.
 
 O catálogo permite criar, editar, pesquisar, filtrar, importar/exportar JSON e manter referências de YouTube, áudio e vídeo. O formato V1 oficial recebe um objeto com `musicas[]`; cada música usa `status` booleano (`true` ativa, `false` inativa), `genero`, `origem`, `musicaBase` e `versoes[]`. `musicaBase` é a identidade lógica da obra, usada para evitar duas versões da mesma obra numa futura live; quando omitida, o título é usado como padrão. `origem` é uma classificação livre, como Nacional ou Internacional. A duração pertence à versão, não à música, e `ordem: 1` identifica a versão principal. Vibes, temperatura, clima, bloco, `ativo`, `principal` e os demais nomes históricos não fazem parte do contrato V1. A identidade da importação é `artista + titulo + musicaBase`; uma versão é identificada por `id`, `tipo + referencia` ou `nome`. Se uma música já existir, seus campos recebidos são atualizados e as versões são mescladas de forma aditiva: versões antigas nunca são apagadas quando o arquivo traz apenas versões novas. URLs e caminhos são tratados literalmente. A prévia não grava nada; a confirmação revalida, é atômica por padrão e aceita modo parcial explícito. `xEmLives` existente nunca é atualizado pela importação.
 

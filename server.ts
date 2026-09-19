@@ -139,12 +139,12 @@ async function sendLegacyConsole(reply: FastifyReply): Promise<void> {
   reply.type('text/html; charset=utf-8').send(body);
 }
 
-async function sendV1(reply: FastifyReply, pathname = '/v1'): Promise<void> {
-  const relative = pathname.replace(/^\/v1\/?/, '');
+async function sendAngular(reply: FastifyReply, pathname = '/'): Promise<void> {
+  const relative = pathname.replace(/^\/+/, '');
   const candidate = resolve(v1BrowserRoot, relative || 'index.html');
   const file = isInside(v1BrowserRoot, candidate) && existsSync(candidate) ? candidate : resolve(v1BrowserRoot, 'index.html');
   if (!existsSync(file)) {
-    reply.code(503).send({ error: 'Shell V1 ainda não foi compilado. Execute npm run build.' });
+    reply.code(503).send({ error: 'Aplicação Angular ainda não foi compilada. Execute npm run build.' });
     return;
   }
   const body = await readFile(file);
@@ -502,18 +502,19 @@ export function createApp({ database = openDatabase(defaultDatabase), storageRoo
     const body = await readFile(file);
     return reply.header('Cache-Control', 'no-store').type(staticTypes[extname(file).toLowerCase()] ?? 'application/octet-stream').send(body);
   });
-  app.get('/catalogo', async (_request, reply) => sendStatic(reply, '/catalogo.html'));
-  app.get('/lives', async (_request, reply) => sendStatic(reply, '/lives.html'));
-  app.get('/blocos', async (_request, reply) => sendStatic(reply, '/blocos.html'));
-  app.get('/execucao', async (_request, reply) => sendStatic(reply, '/execucao.html'));
   app.get('/legacy', async (_request, reply) => sendLegacyConsole(reply));
   app.get('/legacy/*', async (_request, reply) => reply.code(404).send({ error: 'Página legada não encontrada' }));
-  app.get('/v1', async (_request, reply) => sendV1(reply));
-  app.get('/v1/*', async (request, reply) => sendV1(reply, request.url.split('?')[0] ?? '/v1'));
-  app.get('/', async (_request, reply) => sendStatic(reply, '/'));
+  app.get('/v1', async (_request, reply) => reply.redirect('/', 308));
+  app.get('/v1/*', async (request, reply) => {
+    const target = request.url.replace(/^\/v1(?=\/|\?|$)/, '') || '/';
+    return reply.redirect(target, 308);
+  });
+  app.get('/', async (_request, reply) => sendAngular(reply));
   app.get('/*', async (request, reply) => {
     const pathname = request.url.split('?')[0] ?? '/';
-    return sendStatic(reply, pathname);
+    if (pathname.startsWith('/api/')) return reply.code(404).send({ error: 'Rota não encontrada' });
+    if (pathname.startsWith('/media/')) return reply.code(404).send({ error: 'Mídia não encontrada' });
+    return sendAngular(reply, pathname);
   });
   return app;
 }

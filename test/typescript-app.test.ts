@@ -51,12 +51,16 @@ test('mount legado expõe o console v0 baseado em JSON sem alterar as APIs', asy
   database.close();
 });
 
-test('shell V1 possui uma fronteira de rota separada do legacy', async () => {
+test('aplicação Angular ocupa a raiz e o legado permanece isolado', async () => {
   const root = mkdtempSync(join(tmpdir(), 'live-console-v1-'));
   const database = openDatabase(join(root, 'catalogo.sqlite'));
   const app = createApp({ database, storageRoot: join(root, 'storage') });
-  const v1 = await app.inject({ method: 'GET', url: '/v1' });
-  assert.ok([200, 503].includes(v1.statusCode), 'shell não deve cair no catch-all da aplicação atual');
+  const rootResponse = await app.inject({ method: 'GET', url: '/' });
+  assert.ok([200, 503].includes(rootResponse.statusCode), 'a raiz deve ser reservada para a aplicação Angular');
+  assert.doesNotMatch(rootResponse.body, /Live Console · MVP/);
+  const legacyRoute = await app.inject({ method: 'GET', url: '/v1/catalogo' });
+  assert.equal(legacyRoute.statusCode, 308);
+  assert.equal(legacyRoute.headers.location, '/catalogo');
   const legacy = await app.inject({ method: 'GET', url: '/legacy' });
   assert.equal(legacy.statusCode, 200);
   await app.close();
