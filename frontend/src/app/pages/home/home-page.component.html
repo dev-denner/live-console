@@ -1,0 +1,147 @@
+<div class="home" data-testid="home-page">
+  <a class="skip-link" href="#home-main">Pular para o conteúdo</a>
+
+  <aside class="sidebar" aria-label="Navegação principal">
+    <a class="brand" routerLink="/" aria-label="Live Console, ir para o início">
+      <span class="brand-mark" aria-hidden="true">LC</span>
+      <span class="brand-copy">
+        <span class="eyebrow">Live Console</span>
+        <strong>Painel</strong>
+      </span>
+    </a>
+
+    <nav class="side-nav" aria-label="Áreas do Live Console">
+      @for (item of navigation; track item.path) {
+        <a [routerLink]="item.path" routerLinkActive="active">{{ item.label }}</a>
+      }
+    </nav>
+
+    <div class="sidebar-footer">
+      <a class="legacy-link" href="/legacy"><span>Console legado</span><span aria-hidden="true">↗</span></a>
+      <section
+        class="health"
+        [class.success]="healthState().status === 'success'"
+        [class.error]="healthState().status === 'error'"
+        aria-live="polite"
+        data-testid="home-health-state"
+      >
+        <span class="health-dot" aria-hidden="true"></span>
+        @switch (healthState().status) {
+          @case ('loading') { <span>Verificando conexão…</span> }
+          @case ('success') { <span>Backend local saudável</span> }
+          @case ('error') { <span>Sem conexão com o backend</span> }
+        }
+      </section>
+    </div>
+  </aside>
+
+  <main class="content" id="home-main" tabindex="-1">
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">{{ greetingLabel }}</p>
+        <h1>Bem-vindo ao Live Console</h1>
+        @if (state().status === 'success') {
+          <p class="summary">
+            Você tem <strong>{{ totalLives() }}</strong> {{ totalLives() === 1 ? 'live registrada' : 'lives registradas' }}
+            e <strong>{{ totalMusicas() }}</strong> {{ totalMusicas() === 1 ? 'música' : 'músicas' }} no catálogo.
+          </p>
+        }
+      </div>
+      <div class="quick-actions">
+        <a class="primary-button" routerLink="/catalogo" [queryParams]="{ novo: '1' }">Nova música</a>
+        <a class="secondary-button" routerLink="/lives">Nova live</a>
+      </div>
+    </header>
+
+    @switch (state().status) {
+      @case ('loading') {
+        <section class="state-panel" data-testid="home-loading" aria-live="polite" aria-busy="true">
+          <p>Carregando painel…</p>
+        </section>
+      }
+      @case ('error') {
+        <section class="state-panel error" data-testid="home-error" role="alert">
+          <p>{{ state().error.message }}</p>
+          <button type="button" class="secondary-button" (click)="load()">Tentar novamente</button>
+        </section>
+      }
+      @case ('empty') {
+        <section class="state-panel" data-testid="home-empty">
+          <p>Nenhuma live ou música cadastrada ainda. Comece pelo catálogo.</p>
+          <a class="primary-button" routerLink="/catalogo">Ir para o catálogo</a>
+        </section>
+      }
+      @case ('success') {
+        <section class="next-live" aria-label="Próxima live" data-testid="home-next-live">
+          @if (nextLive(); as live) {
+            <p class="eyebrow">{{ live.status === 'em_execucao' ? 'Em execução agora' : 'Próxima live' }}</p>
+            <h2>{{ live.titulo }}</h2>
+            <div class="next-live-meta">
+              <span>{{ formatDate(live.data) }}</span>
+              <span class="dot" aria-hidden="true">·</span>
+              <span>{{ live.itens.length }} {{ live.itens.length === 1 ? 'música' : 'músicas' }}</span>
+              <span class="status-badge" [attr.data-status]="live.status">{{ statusLabel(live.status) }}</span>
+            </div>
+            <a class="primary-button" [routerLink]="['/execucao', live.id]">Abrir</a>
+          } @else {
+            <p class="eyebrow">Próxima live</p>
+            <p class="muted-state">Nenhuma live em fila ou agendada com data futura.</p>
+            <a class="secondary-button" routerLink="/lives">Planejar uma live</a>
+          }
+        </section>
+
+        <section class="dashboard-columns">
+          <div class="panel recent-lives" data-testid="home-recent-lives">
+            <div class="panel-heading"><h3>Últimas lives</h3></div>
+            @if (recentLives().length) {
+              <ul class="live-list">
+                @for (live of recentLives(); track live.id) {
+                  <li>
+                    <a class="live-list-copy" [routerLink]="['/execucao', live.id]">
+                      <strong>{{ live.titulo }}</strong>
+                      <small>{{ formatDate(live.data) }} · {{ live.itens.length }} {{ live.itens.length === 1 ? 'música' : 'músicas' }}</small>
+                    </a>
+                    <span class="status-badge" [attr.data-status]="live.status">{{ statusLabel(live.status) }}</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="muted-state">Nenhuma live registrada ainda.</p>
+            }
+          </div>
+
+          <div class="panel top-played" data-testid="home-top-played">
+            <div class="panel-heading"><h3>Músicas mais tocadas</h3></div>
+            @if (topPlayed().length) {
+              <ul class="chart">
+                @for (music of topPlayed(); track music.id) {
+                  <li>
+                    <div class="chart-label">
+                      <span class="chart-title">{{ music.titulo }}</span>
+                      <span class="chart-artist">{{ music.artista }}</span>
+                    </div>
+                    <div class="chart-bar-track" role="presentation">
+                      <div class="chart-bar" [style.width]="barWidth(music.xEmLives)"></div>
+                    </div>
+                    <span class="chart-count">{{ music.xEmLives }}×</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="muted-state">Nenhuma música tocada em lives encerradas ainda.</p>
+            }
+          </div>
+        </section>
+      }
+    }
+
+    <section class="tiles" aria-label="Atalhos">
+      @for (tile of tiles; track tile.label) {
+        <a class="tile" [routerLink]="tile.path" [queryParams]="tile.queryParams ?? null">
+          <strong>{{ tile.label }}</strong>
+          <span>{{ tile.description }}</span>
+        </a>
+      }
+    </section>
+  </main>
+</div>
