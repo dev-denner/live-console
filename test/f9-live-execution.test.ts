@@ -15,7 +15,7 @@ test('F9 executa fora da ordem, exige Play e reconcilia xEmLives apenas ao encer
   assert.equal((await app.inject({method:'POST',url:`/api/repertorios/${live}/executar`,payload:{idempotencyKey:crypto.randomUUID()}})).statusCode,200);
   const items=(await app.inject({method:'GET',url:`/api/lives/${live}`})).json().live.itens;
   let response=await app.inject({method:'POST',url:`/api/execucoes/${live}/itens/${items[1].id}/marcar-tocada`,payload:{idempotencyKey:crypto.randomUUID()}});assert.equal(response.statusCode,409);
-  await app.inject({method:'POST',url:`/api/execucoes/${live}/itens/${items[1].id}/play`,payload:{idempotencyKey:crypto.randomUUID()}});
+  response=await app.inject({method:'POST',url:`/api/execucoes/${live}/itens/${items[1].id}/play`,payload:{idempotencyKey:crypto.randomUUID()}});assert.equal(response.statusCode,200);assert.equal(response.json().execucao.itens.find((item: {id:string})=>item.id===items[1].id).estado,'tocando');
   await app.inject({method:'POST',url:`/api/execucoes/${live}/itens/${items[1].id}/marcar-tocada`,payload:{idempotencyKey:crypto.randomUUID()}});
   assert.equal(getMusic(db,songs[1]).x_em_lives,0);
   response=await app.inject({method:'POST',url:`/api/execucoes/${live}/encerrar`,payload:{idempotencyKey:crypto.randomUUID()}});assert.equal(response.statusCode,200);assert.equal(getMusic(db,songs[1]).x_em_lives,1);

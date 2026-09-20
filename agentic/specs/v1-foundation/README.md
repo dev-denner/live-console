@@ -71,3 +71,7 @@ A ordem e o conteúdo detalhado das fases podem ser ajustados por uma spec aprov
 ### F9 — Execução de repertórios de lives
 
 Tratar repertório de live como entidade com múltiplos registros, fechamento imutável, duplicação segura e sessão operacional separada. A execução permite tocar fora da ordem planejada, adicionar músicas ao final, reordenar entre blocos, pular sem remover e registrar somente a ordem real. `Marcar tocada` exige `Play`; `xEmLives` só é reconciliado no encerramento idempotente. A spec completa está em `f9-live-execution/`.
+
+### F10 — Home dashboard
+
+Substituir o redirecionamento da raiz (`/` → `/catalogo`) por uma home que resume o estado operacional: próxima live em destaque (fila ou data futura), últimas lives, músicas mais tocadas (via `xEmLives` real) e atalhos para as áreas existentes, incluindo uma rota placeholder para Configurações. A home usa um sistema visual próprio, escopado ao componente (ver [ADR-005](../../../docs/aidd/adr/ADR-005-home-dashboard-scoped-visual-system.md)); o shell operacional (`AppShellComponent`) e suas demais páginas não mudam. Não introduz endpoints novos nem altera regras de catálogo, blocos, lives ou execução. A spec completa está em `f10-home-dashboard/`.
