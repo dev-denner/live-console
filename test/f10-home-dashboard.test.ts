@@ -77,7 +77,9 @@ test('F10 a home consulta apenas endpoints já existentes e reaproveita o placeh
   assert.match(service, /\/api\/lives/);
   assert.match(service, /\/api\/v1\/musicas/);
   const template = read('frontend/src/app/pages/home/home-page.component.html');
+  const navigation = read('frontend/src/app/pages/home/home.navigation.ts');
+  const renderedSources = `${template}\n${navigation}`;
   for (const label of ['Catálogo', 'Blocos', 'Lives', 'Execução', 'Nova música', 'Configurações']) {
-    assert.match(template, new RegExp(label));
+    assert.match(renderedSources, new RegExp(label));
   }
 });
