@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { CatalogoService } from './catalogo.service';
 import { CatalogFilters, CatalogMusic, MusicRegistration, MusicVersionDraft } from './catalogo.models';
 import { ApiError } from '../../core/api/api-error';
@@ -12,6 +13,7 @@ import { RequestState } from '../../core/models/request-state';
 })
 export class CatalogoPageComponent {
   private readonly service = inject(CatalogoService);
+  private readonly route = inject(ActivatedRoute);
   readonly filters = signal<CatalogFilters>({ status: '', autoral: '' });
   readonly state = signal<RequestState<CatalogMusic[]>>({ status: 'loading' });
   readonly registration = signal<MusicRegistration | null>(null);
@@ -23,7 +25,10 @@ export class CatalogoPageComponent {
   readonly deleteError = signal<string | null>(null);
   private versionTrigger: HTMLElement | null = null;
 
-  constructor() { this.load(); }
+  constructor() {
+    this.load();
+    if (this.route.snapshot.queryParamMap.get('novo') === '1') this.newMusic();
+  }
 
   load(): void {
     this.state.set({ status: 'loading' });
